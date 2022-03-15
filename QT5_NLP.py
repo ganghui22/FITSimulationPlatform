@@ -31,7 +31,7 @@ class MainWindow(QMainWindow, Ui_dialog):
         self.timer = QTimer(self)
         self.count = 0
         self.pointnumber = 0
-        self.Im = cv2.imread('/home/xdy/workspace/nlp_workspace/QtNLP/PathPlanningAstar/fit4_5Dealing.png')
+        self.Im = cv2.imread('./PathPlanningAstar/fit4_5Dealing.png')
         self.startlocal_pix, self.startlocal = get_random_agent_location()
         self.startlocal_pix = (self.startlocal_pix[0], self.startlocal_pix[1])
         print(self.startlocal_pix)
@@ -39,9 +39,8 @@ class MainWindow(QMainWindow, Ui_dialog):
         self.show_pic(self.Im)
         self.path = []
         self.corenlp = CorenNLP()
-        self.GanghuiHead = "<img src='/home/xdy/workspace/nlp_workspace/QtNLP/headportrait.jpeg' width='80' " \
-                           "height='80'> "
-        self.RobotHead = "<img src='/home/xdy/workspace/nlp_workspace/QtNLP/robot.jpeg' width='50' height='50'>"
+        self.GanghuiHead = "<img src='./headportrait.jpeg' width='80' height='80'> "
+        self.RobotHead = "<img src='./robot.jpeg' width='80' height='80'>"
 
     def show_pic(self, cv2image) -> None:
         cv2image = cv2.resize(cv2image, (2300, 2000), interpolation=cv2.INTER_CUBIC)
@@ -65,7 +64,7 @@ class MainWindow(QMainWindow, Ui_dialog):
                   "<li class='myMsg'>" \
                   "<div>" \
                   "<div class='divMyHead'>" \
-                  "<img src='/home/xdy/workspace/nlp_workspace/QtNLP/headportrait.jpeg' width='80' height='80'>" \
+                  + self.GanghuiHead + \
                   "<font color='green'>" \
                   + user + \
                   "      </font>" \
@@ -100,7 +99,7 @@ class MainWindow(QMainWindow, Ui_dialog):
                   "<li class='myMsg'>" \
                   "<div>" \
                   "<div class='divMyHead'>" \
-                  "<img src='/home/xdy/workspace/nlp_workspace/QtNLP/robot.jpeg' width='80' height='80'>" \
+                  + self.RobotHead + \
                   "<font color='green'>" \
                   + "Robot" + \
                   "      </font>" \
@@ -144,11 +143,6 @@ class MainWindow(QMainWindow, Ui_dialog):
                 self.timer.start(20)
                 self.timer.timeout.connect(self.timeout_slot)
                 self.pointnumber = len(self.path)
-            if sendtext == "4":
-                waterimage = cv2.imread('/home/xdy/workspace/nlp_workspace/QtNLP/water.jpeg')
-                waterimage = cv2.resize(waterimage, (int(waterimage.shape[1] / 10), int(waterimage.shape[0] / 10)),
-                                        interpolation=cv2.INTER_CUBIC)
-                cv2.imwrite("/home/xdy/workspace/nlp_workspace/QtNLP/water_deal.png", waterimage)
 
     def timeout_slot(self):
         if self.count >= self.pointnumber:
