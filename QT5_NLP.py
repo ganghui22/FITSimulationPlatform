@@ -10,7 +10,8 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
 from QtNLP import Ui_dialog
-from PathPlanningAstar.astar import world_to_pixel, PathPlanner, Node, Map
+from PathPlanningAstar.astar import world_to_pixel,Map,smooth_path2
+from PathPlanningAstar.Simulator_llj import search
 from CoreNLP.CoreNLP import CorenNLP
 
 location_list = {
@@ -41,6 +42,7 @@ class MainWindow(QMainWindow, Ui_dialog):
         self.corenlp = CorenNLP()
         self.GanghuiHead = "<img src='./headportrait.jpeg' width='80' height='80'> "
         self.RobotHead = "<img src='./robot.jpeg' width='80' height='80'>"
+        self.path_map = Map()
 
     def show_pic(self, cv2image) -> None:
         cv2image = cv2.resize(cv2image, (2300, 2000), interpolation=cv2.INTER_CUBIC)
@@ -132,16 +134,13 @@ class MainWindow(QMainWindow, Ui_dialog):
                 robotreply = "Sorry,I dont know what you say."
             self.Robotalk(robotreply)
 
-            if sendtext == "帮我给刘老师送一份文件":
-                start1 = Node(self.startlocal[0], self.startlocal[1], math.pi)
-                goal1 = Node(81.050, 13.979)
-                planner1 = PathPlanner(goal1, math.pi, start1)
-                start2 = Node(81.050, 13.979, math.pi)
-                goal2 = Node(69.550, -69.322, math.pi)
-                planner2 = PathPlanner(goal2, math.pi, start2)
-                self.path = planner1.plan()
+            if sendtext == "4":
+                path_search = search(start=self.startlocal_pix, goal=(1470, 1821),map=self.path_map)
+                path = path_search.make_path()
+                self.path = smooth_path2(path)
                 self.timer.start(20)
                 self.timer.timeout.connect(self.timeout_slot)
+                print(len(self.path))
                 self.pointnumber = len(self.path)
 
     def timeout_slot(self):
@@ -150,8 +149,9 @@ class MainWindow(QMainWindow, Ui_dialog):
             self.count = 0
             self.pointnumber = 0
         else:
-            x, y = world_to_pixel(world_points=(self.path[self.count].x, self.path[self.count].y),
-                                  image_size=(2309, 2034))
+            # x, y = world_to_pixel(world_points=(self.path[self.count][0], self.path[self.count][1]),
+            #                       image_size=(2309, 2034))
+            x,y=self.path[self.count][0], self.path[self.count][1]
             cv2.circle(self.Im, (x, y), 2, (0, 0, 213), -1)
             self.show_pic(self.Im)
             self.count = self.count + 1

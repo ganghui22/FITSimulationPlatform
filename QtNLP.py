@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# Form implementation generated from reading ui file 'QtNLP'
+# Form implementation generated from reading ui file 'QtNLP.ui'
 #
 # Created by: PyQt5 UI code generator 5.14.1
 #
@@ -13,10 +13,10 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_dialog(object):
     def setupUi(self, dialog):
         dialog.setObjectName("dialog")
-        dialog.resize(2038, 1253)
+        dialog.resize(1219, 854)
         dialog.setAutoFillBackground(False)
         self.chat_interface = QtWidgets.QTextBrowser(dialog)
-        self.chat_interface.setGeometry(QtCore.QRect(10, 10, 571, 1161))
+        self.chat_interface.setGeometry(QtCore.QRect(20, 10, 381, 721))
         self.chat_interface.setContextMenuPolicy(QtCore.Qt.DefaultContextMenu)
         self.chat_interface.setAutoFillBackground(False)
         self.chat_interface.setFrameShape(QtWidgets.QFrame.Box)
@@ -25,16 +25,16 @@ class Ui_dialog(object):
         self.chat_interface.setTabChangesFocus(False)
         self.chat_interface.setObjectName("chat_interface")
         self.chat_text = QtWidgets.QTextEdit(dialog)
-        self.chat_text.setGeometry(QtCore.QRect(10, 1180, 471, 70))
+        self.chat_text.setGeometry(QtCore.QRect(20, 730, 281, 61))
         self.chat_text.setObjectName("chat_text")
         self.Send_Button = QtWidgets.QPushButton(dialog)
-        self.Send_Button.setGeometry(QtCore.QRect(490, 1180, 91, 71))
+        self.Send_Button.setGeometry(QtCore.QRect(300, 730, 91, 61))
         font = QtGui.QFont()
         font.setPointSize(20)
         self.Send_Button.setFont(font)
         self.Send_Button.setObjectName("Send_Button")
         self.map = QtWidgets.QLabel(dialog)
-        self.map.setGeometry(QtCore.QRect(590, 10, 1431, 1221))
+        self.map.setGeometry(QtCore.QRect(420, 40, 711, 631))
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)

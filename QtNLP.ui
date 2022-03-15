@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>2038</width>
-    <height>1253</height>
+    <width>1219</width>
+    <height>854</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -19,10 +19,10 @@
   <widget class="QTextBrowser" name="chat_interface">
    <property name="geometry">
     <rect>
-     <x>10</x>
+     <x>20</x>
      <y>10</y>
-     <width>571</width>
-     <height>1161</height>
+     <width>381</width>
+     <height>721</height>
     </rect>
    </property>
    <property name="contextMenuPolicy">
@@ -47,20 +47,20 @@
   <widget class="QTextEdit" name="chat_text">
    <property name="geometry">
     <rect>
-     <x>10</x>
-     <y>1180</y>
-     <width>471</width>
-     <height>70</height>
+     <x>20</x>
+     <y>730</y>
+     <width>281</width>
+     <height>61</height>
     </rect>
    </property>
   </widget>
   <widget class="QPushButton" name="Send_Button">
    <property name="geometry">
     <rect>
-     <x>490</x>
-     <y>1180</y>
+     <x>300</x>
+     <y>730</y>
      <width>91</width>
-     <height>71</height>
+     <height>61</height>
     </rect>
    </property>
    <property name="font">
@@ -75,10 +75,10 @@
   <widget class="QLabel" name="map">
    <property name="geometry">
     <rect>
-     <x>590</x>
-     <y>10</y>
-     <width>1431</width>
-     <height>1221</height>
+     <x>420</x>
+     <y>40</y>
+     <width>711</width>
+     <height>631</height>
     </rect>
    </property>
    <property name="sizePolicy">
