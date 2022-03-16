@@ -83,7 +83,7 @@ def map_dealing(map_path: str) -> None:
             if map_binary[x, y] == 204:
                 map_binary[x, y] = 0
     contours, hierarchy = cv2.findContours(map_binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-    cv2.drawContours(map_connectedcomponents, contours, -1, 0, 2)
+    cv2.drawContours(map_connectedcomponents, contours, -1, 0, 1)
     map_name = map_path.split('.')
     cv2.imwrite(map_name[0] + 'Dealing' + '.png', map_connectedcomponents)
 

@@ -18,7 +18,7 @@ class Map:
 		"""
 		Construct an occupancy grid map from the image
 		"""
-		self.map_image = Image.open('./PathPlanningAstar/middle.png')
+		self.map_image = Image.open('./middle.png')
 		self.width, self.height = self.map_image.size
 		print(self.map_image.size)
 		self.pixels = self.map_image.load()
