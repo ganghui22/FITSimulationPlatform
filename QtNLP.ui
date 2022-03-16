@@ -6,9 +6,21 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1219</width>
-    <height>854</height>
+    <width>1672</width>
+    <height>869</height>
    </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>1672</width>
+    <height>869</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>1672</width>
+    <height>869</height>
+   </size>
   </property>
   <property name="windowTitle">
    <string>FIT4-5仿真平台</string>
@@ -16,92 +28,191 @@
   <property name="autoFillBackground">
    <bool>false</bool>
   </property>
-  <widget class="QTextBrowser" name="chat_interface">
+  <widget class="QWidget" name="gridLayoutWidget">
    <property name="geometry">
     <rect>
-     <x>20</x>
-     <y>10</y>
-     <width>381</width>
-     <height>721</height>
+     <x>0</x>
+     <y>0</y>
+     <width>1671</width>
+     <height>871</height>
     </rect>
    </property>
-   <property name="contextMenuPolicy">
-    <enum>Qt::DefaultContextMenu</enum>
-   </property>
-   <property name="autoFillBackground">
-    <bool>false</bool>
-   </property>
-   <property name="frameShape">
-    <enum>QFrame::Box</enum>
-   </property>
-   <property name="frameShadow">
-    <enum>QFrame::Sunken</enum>
-   </property>
-   <property name="verticalScrollBarPolicy">
-    <enum>Qt::ScrollBarAlwaysOn</enum>
-   </property>
-   <property name="tabChangesFocus">
-    <bool>false</bool>
-   </property>
-  </widget>
-  <widget class="QTextEdit" name="chat_text">
-   <property name="geometry">
-    <rect>
-     <x>20</x>
-     <y>730</y>
-     <width>281</width>
-     <height>61</height>
-    </rect>
-   </property>
-  </widget>
-  <widget class="QPushButton" name="Send_Button">
-   <property name="geometry">
-    <rect>
-     <x>300</x>
-     <y>730</y>
-     <width>91</width>
-     <height>61</height>
-    </rect>
-   </property>
-   <property name="font">
-    <font>
-     <pointsize>20</pointsize>
-    </font>
-   </property>
-   <property name="text">
-    <string>Send</string>
-   </property>
-  </widget>
-  <widget class="QLabel" name="map">
-   <property name="geometry">
-    <rect>
-     <x>420</x>
-     <y>40</y>
-     <width>711</width>
-     <height>631</height>
-    </rect>
-   </property>
-   <property name="sizePolicy">
-    <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
-     <horstretch>0</horstretch>
-     <verstretch>0</verstretch>
-    </sizepolicy>
-   </property>
-   <property name="autoFillBackground">
-    <bool>false</bool>
-   </property>
-   <property name="locale">
-    <locale language="English" country="UnitedStates"/>
-   </property>
-   <property name="frameShadow">
-    <enum>QFrame::Plain</enum>
-   </property>
-   <property name="text">
-    <string/>
-   </property>
-   <property name="textFormat">
-    <enum>Qt::PlainText</enum>
-   </property>
+   <layout class="QGridLayout" name="gridLayout">
+    <item row="0" column="0">
+     <widget class="QGroupBox" name="groupBox">
+      <property name="enabled">
+       <bool>true</bool>
+      </property>
+      <property name="title">
+       <string/>
+      </property>
+      <widget class="QTextBrowser" name="chat_interface">
+       <property name="geometry">
+        <rect>
+         <x>10</x>
+         <y>30</y>
+         <width>601</width>
+         <height>721</height>
+        </rect>
+       </property>
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="contextMenuPolicy">
+        <enum>Qt::DefaultContextMenu</enum>
+       </property>
+       <property name="autoFillBackground">
+        <bool>false</bool>
+       </property>
+       <property name="frameShape">
+        <enum>QFrame::Box</enum>
+       </property>
+       <property name="frameShadow">
+        <enum>QFrame::Sunken</enum>
+       </property>
+       <property name="verticalScrollBarPolicy">
+        <enum>Qt::ScrollBarAlwaysOn</enum>
+       </property>
+       <property name="tabChangesFocus">
+        <bool>false</bool>
+       </property>
+      </widget>
+      <widget class="QTextEdit" name="chat_text">
+       <property name="geometry">
+        <rect>
+         <x>110</x>
+         <y>760</y>
+         <width>400</width>
+         <height>71</height>
+        </rect>
+       </property>
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+      </widget>
+      <widget class="QLabel" name="map">
+       <property name="geometry">
+        <rect>
+         <x>650</x>
+         <y>40</y>
+         <width>1001</width>
+         <height>801</height>
+        </rect>
+       </property>
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="autoFillBackground">
+        <bool>false</bool>
+       </property>
+       <property name="locale">
+        <locale language="English" country="UnitedStates"/>
+       </property>
+       <property name="frameShadow">
+        <enum>QFrame::Plain</enum>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+       <property name="textFormat">
+        <enum>Qt::PlainText</enum>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="Send_Button">
+       <property name="geometry">
+        <rect>
+         <x>510</x>
+         <y>760</y>
+         <width>101</width>
+         <height>71</height>
+        </rect>
+       </property>
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+         <horstretch>0</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <property name="font">
+        <font>
+         <pointsize>20</pointsize>
+        </font>
+       </property>
+       <property name="text">
+        <string>Send</string>
+       </property>
+      </widget>
+      <widget class="QComboBox" name="UserComboBox">
+       <property name="geometry">
+        <rect>
+         <x>0</x>
+         <y>835</y>
+         <width>111</width>
+         <height>25</height>
+        </rect>
+       </property>
+       <item>
+        <property name="text">
+         <string>WenDong</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>Mr.Liu</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>GangHui</string>
+        </property>
+       </item>
+       <item>
+        <property name="text">
+         <string>LanJun</string>
+        </property>
+       </item>
+      </widget>
+      <widget class="QLabel" name="userhead">
+       <property name="geometry">
+        <rect>
+         <x>19</x>
+         <y>752</y>
+         <width>80</width>
+         <height>80</height>
+        </rect>
+       </property>
+       <property name="text">
+        <string/>
+       </property>
+      </widget>
+      <widget class="QPushButton" name="cleartrackbutton">
+       <property name="geometry">
+        <rect>
+         <x>130</x>
+         <y>835</y>
+         <width>351</width>
+         <height>25</height>
+        </rect>
+       </property>
+       <property name="autoFillBackground">
+        <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>Clear the Track</string>
+       </property>
+      </widget>
+     </widget>
+    </item>
+   </layout>
   </widget>
  </widget>
  <resources/>
