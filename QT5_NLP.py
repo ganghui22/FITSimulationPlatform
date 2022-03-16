@@ -168,6 +168,7 @@ class MainWindow(QMainWindow, Ui_dialog):
         userhead = QImage(userhead.data, userhead.shape[1], userhead.shape[0], QImage.Format_RGB888)
         self.userhead.setPixmap(QPixmap.fromImage(userhead))
     def ganghui22(self):
+        print('ZHELISHI GANGHUI!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
         pass
     def cleartrackbutton_function(self):
         self.Im = cv2.imread('PathPlanningAstar/fit4_5Dealing.png')
