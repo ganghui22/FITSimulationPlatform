@@ -140,8 +140,6 @@ class MainWindow(QMainWindow, Ui_dialog):
                 self.path = smooth_path2(path)
                 self.movetimer.start(2)
                 self.movetimer.timeout.connect(self.timeout_slot)
-                self.timer.start(20)
-                self.timer.timeout.connect(self.timeout_slot)
                 print(len(self.path))
                 self.pointnumber = len(self.path)
 
