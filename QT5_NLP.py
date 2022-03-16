@@ -167,7 +167,8 @@ class MainWindow(QMainWindow, Ui_dialog):
         userhead = cv2.resize(userhead, (80, 80), interpolation=cv2.INTER_CUBIC)
         userhead = QImage(userhead.data, userhead.shape[1], userhead.shape[0], QImage.Format_RGB888)
         self.userhead.setPixmap(QPixmap.fromImage(userhead))
-
+    def ganghui22(self):
+        pass
     def cleartrackbutton_function(self):
         self.Im = cv2.imread('PathPlanningAstar/fit4_5Dealing.png')
         cv2.circle(self.Im, (self.RobotCurrentPoint_pix[0],self.RobotCurrentPoint_pix[1]), 10, (0, 0, 255), -1)
