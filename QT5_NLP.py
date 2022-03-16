@@ -47,8 +47,6 @@ Person = {
     }
 }
 
-def llj():
-    pass
 class MainWindow(QMainWindow, Ui_dialog):
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
@@ -215,6 +213,14 @@ def get_random_agent_location():
         point = (random.choice(range(-80, 80)), random.choice(range(-80, 80)))
         pixle_point = world_to_pixel(world_points=point, image_size=(2309, 2034))
         if 0 <= pixle_point[0] < 2309 and 0 <= pixle_point[1] < 2034:
+            false_flag = False
+            for i in range(-2, 2, 2):
+                for j in range(-2, 2, 2):
+                    if map[pixle_point[0] + i][pixle_point[1] + j] == False:
+                        false_flag = True
+                        break
+                if false_flag == True:
+                    break
             if map[pixle_point[0]][pixle_point[1]] == True:
                 break
     return pixle_point, point
