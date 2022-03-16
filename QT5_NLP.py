@@ -44,8 +44,12 @@ Person = {
         "name": "Mr.Liu",
         "position": (69.55, -69.32),
         "head": "Mr.Liu.jpeg"
+    },
+    "WangYi":{
+
     }
 }
+
 
 class MainWindow(QMainWindow, Ui_dialog):
     def __init__(self, parent=None):
