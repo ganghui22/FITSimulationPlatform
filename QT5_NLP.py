@@ -47,7 +47,8 @@ Person = {
     }
 }
 
-
+def llj():
+    pass
 class MainWindow(QMainWindow, Ui_dialog):
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
