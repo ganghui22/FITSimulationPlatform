@@ -83,6 +83,9 @@ class MainWindow(QMainWindow, Ui_dialog):
         showImage = QImage(cv2image.data, cv2image.shape[1], cv2image.shape[0], QImage.Format_RGB888)
         self.map.setPixmap(QPixmap.fromImage(showImage))
 
+    def Ganghui(self) -> None:
+        print("港晖是最帅滴")
+
     def UserTalk(self, message: str):
         self.chat_interface.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
         strHTML = "<html>" \
@@ -127,7 +130,6 @@ class MainWindow(QMainWindow, Ui_dialog):
                   ".atalk span{background:#dcdcdc;border:2px solid;color:#000;text-align:right;}" \
                   ".myMsg{max-height:300px;max-width:300px;position:right;float:lift;}" \
                   ".divMyHead{position: relative;float: right;margin:5px 0px 5px 0px;right: 1px;border-radius: 5px;}" \
-                  "" \
                   "font-size:3px;font-family:'微软雅黑';text-align:center;color:#fff;}.clear{clear:both;}" \
                   "</style>" \
                   "</head>" \
@@ -169,6 +171,7 @@ class MainWindow(QMainWindow, Ui_dialog):
         self.Im = cv2.imread('PathPlanningAstar/fit4_5Dealing.png')
         cv2.circle(self.Im, (self.RobotCurrentPoint_pix[0],self.RobotCurrentPoint_pix[1]), 10, (0, 0, 255), -1)
         self.show_pic(self.Im)
+
     def sendbutton_fuction(self):
         sendtext = self.chat_text.toPlainText()
         if sendtext != "":
