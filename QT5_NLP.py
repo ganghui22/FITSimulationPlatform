@@ -1,19 +1,16 @@
-import PyQt5.QtCore
 import cv2
-import math
 import sys
 import time
-import os
 from PyQt5 import QtCore
-from PyQt5.QtCore import QTimer
+from PyQt5.QtCore import QTimer, QSize, QDateTime
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
-from QtNLP import Ui_dialog
+from MainWindow import Ui_MainWindow
 from PathPlanningAstar.astar import world_to_pixel, Map, smooth_path2
 from PathPlanningAstar.Simulator_llj import search
 from CoreNLP.CoreNLP import CorenNLP
-
+from QtCustomComponents.qnchatmessage import QNChatMessage
 HeadWidth = 80
 HeadHight = 80
 
@@ -45,14 +42,12 @@ Person = {
         "position": (69.55, -69.32),
         "head": "Mr.Liu.jpeg"
     },
-    "WangYi":{
+    "WangYi": {
 
     }
 }
-def LLJ():
-    pass
 
-class MainWindow(QMainWindow, Ui_dialog):
+class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
         self.setupUi(self)
@@ -74,10 +69,35 @@ class MainWindow(QMainWindow, Ui_dialog):
         self.Currentuser = Person['WenDong']
         self.RobotHead = "robot.jpeg"
         self.path_map = Map()
-        userhead = cv2.imread(self.Currentuser['head'])
-        userhead = cv2.resize(userhead, (80, 80), interpolation=cv2.INTER_CUBIC)
-        userhead = QImage(userhead.data, userhead.shape[1], userhead.shape[0], QImage.Format_RGB888)
-        self.userhead.setPixmap(QPixmap.fromImage(userhead))
+        self.userhead.setPixmap(QPixmap("ProfilePicture/" + self.Currentuser['head']))
+
+
+    def dealMessage(self, messageW: QNChatMessage, item: QListWidgetItem,
+                    text: str, name: str, time: int, usertype: QNChatMessage.User_Type):
+        messageW.setFixedWidth(self.width())
+        size = messageW.fontRect(text, name)
+        item.setSizeHint(size)
+        messageW.setText(text, time, name, size, usertype)
+        self.listWidget.setItemWidget(item, messageW)
+
+    def dealMessageTime(self, curMsgTime: int):
+        isShowTime = False
+        if self.listWidget.count() > 0:
+            lastItem = self.listWidget.item(self.listWidget.count() - 1)
+            messageW = self.listWidget.itemWidget(lastItem)
+            lastTime = messageW.m_time
+            curTime = curMsgTime
+            isShowTime = ((curTime - lastTime) > 60)  # 两个消息相差一分钟
+        else:
+            isShowTime = True
+        if isShowTime:
+            messageTime = QNChatMessage(self.listWidget.parentWidget())
+            itemTime = QListWidgetItem(self.listWidget)
+            size = QSize(self.width(), 40)
+            messageTime.resize(size)
+            itemTime.setSizeHint(size)
+            messageTime.setText(str(curMsgTime), curMsgTime, "", size, QNChatMessage.User_Type.User_Time)
+            self.listWidget.setItemWidget(itemTime, messageTime)
 
     def show_pic(self, cv2image) -> None:
         cv2image = cv2.resize(cv2image, (2300, 2000), interpolation=cv2.INTER_CUBIC)
@@ -85,95 +105,38 @@ class MainWindow(QMainWindow, Ui_dialog):
         self.map.setPixmap(QPixmap.fromImage(showImage))
 
     def UserTalk(self, message: str):
-        self.chat_interface.setAlignment(QtCore.Qt.AlignmentFlag.AlignLeft)
-        strHTML = "<html>" \
-                  "<head>" \
-                  "<style type='text/css'>" \
-                  ".atalk{margin:10px}" \
-                  ".atalk span{display:inline-block;background:#dcdcdc;border:2px solid;color:#000;text-align:left;}" \
-                  ".myMsg{max-height:300px;max-width:300px;position:relative;float:lift;}" \
-                  ".divMyHead{position: relative;float: right;margin:5px 0px 5px 0px;right: 1px;border-radius: 5px;}" \
-                  "" \
-                  "font-size:3px;font-family:'微软雅黑';text-align:center;color:#fff;}.clear{clear:both;}" \
-                  "</style>" \
-                  "</head>" \
-                  "<body>" \
-                  "<li class='myMsg'>" \
-                  "<div>" \
-                  "<div class='divMyHead'>" \
-                  "<img src='" + self.Currentuser['head'] + "' width=" + str(HeadWidth) + " height=" + ">" + \
-                  "<font color='green'>" \
-                  + self.Currentuser['name'] + \
-                  "      </font>" \
-                  "<font color='blue'>" \
-                  + time.strftime("%Y-%m-%d %H:%M:%S") + \
-                  "</font>" \
-                  "</div>" \
-                  "<div class='atalk'>" \
-                  "<font class='atalk' size=5><span>" + message + "</span>" \
-                                                                  "</font>" \
-                                                                  "</div>" \
-                                                                  "</div>" \
-                                                                  "</li>" \
-                                                                  "<body>" \
-                                                                  "</html>"
-        self.chat_interface.insertHtml(strHTML)
+        t = QDateTime.currentDateTime().toTime_t()
+        self.dealMessageTime(t)
+        messageW = QNChatMessage(self.listWidget.parentWidget())
+        messageW.setPixUser("ProfilePicture/" + self.Currentuser['head'])
+        item = QListWidgetItem(self.listWidget)
+        self.dealMessage(messageW, item, message, self.Currentuser['name'], t, QNChatMessage.User_Type.User_She)
+        self.listWidget.setCurrentRow(self.listWidget.count() - 1)
 
     def Robotalk(self, message: str):
-        self.chat_interface.setAlignment(QtCore.Qt.AlignmentFlag.AlignRight)
-        strHTML = "<html>" \
-                  "<head>" \
-                  "<style type='text/css'>" \
-                  ".atalk{margin:10px}" \
-                  ".atalk span{background:#dcdcdc;border:2px solid;color:#000;text-align:right;}" \
-                  ".myMsg{max-height:300px;max-width:300px;position:right;float:lift;}" \
-                  ".divMyHead{position: relative;float: right;margin:5px 0px 5px 0px;right: 1px;border-radius: 5px;}" \
-                  "" \
-                  "font-size:3px;font-family:'微软雅黑';text-align:center;color:#fff;}.clear{clear:both;}" \
-                  "</style>" \
-                  "</head>" \
-                  "<body>" \
-                  "<li class='myMsg'>" \
-                  "<div>" \
-                  "<div class='divMyHead'>" \
-                  "<font color='green'>" \
-                  + "Robot" + \
-                  "      </font>" \
-                  "<font color='blue'>" \
-                  + time.strftime("%Y-%m-%d %H:%M:%S") + \
-                  "</font>" \
-                  + "<img src='" + self.RobotHead + "' width=" + str(HeadWidth) + " height=" + ">" \
-                                                                                               "</div>" \
-                                                                                               "<div class='atalk'>" \
-                                                                                               "<font class='atalk' size=5><span>" + message + \
-                  "</span>" \
-                  "</font>" \
-                  "</div>" \
-                  "</div>" \
-                  "</li>" \
-                  "<body>" \
-                  "</html>"
-        self.chat_interface.insertHtml(strHTML)
-
+        t = QDateTime.currentDateTime().toTime_t()
+        self.dealMessageTime(t)
+        messageW = QNChatMessage(self.listWidget.parentWidget())
+        print(self.listWidget.parentWidget().width())
+        item = QListWidgetItem(self.listWidget)
+        self.dealMessage(messageW, item, message, "Robot", t, QNChatMessage.User_Type.User_Me)
+        self.listWidget.setCurrentRow(self.listWidget.count() - 1)
     def userchanged(self):
         currentuser = self.UserComboBox.currentText()
         for key in Person:
             if currentuser == key:
                 self.Currentuser = Person[key]
                 break
-        userhead = cv2.imread(self.Currentuser['head'])
-        userhead = cv2.resize(userhead, (80, 80), interpolation=cv2.INTER_CUBIC)
-        userhead = QImage(userhead.data, userhead.shape[1], userhead.shape[0], QImage.Format_RGB888)
-        self.userhead.setPixmap(QPixmap.fromImage(userhead))
-    def ganghui22(self):
-        print('ZHELISHI GANGHUI!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-        pass
+        self.userhead.setPixmap(QPixmap("ProfilePicture/" + self.Currentuser['head']))
+
     def cleartrackbutton_function(self):
         self.Im = cv2.imread('PathPlanningAstar/fit4_5Dealing.png')
-        cv2.circle(self.Im, (self.RobotCurrentPoint_pix[0],self.RobotCurrentPoint_pix[1]), 10, (0, 0, 255), -1)
+        cv2.circle(self.Im, (self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1]), 10, (0, 0, 255), -1)
         self.show_pic(self.Im)
+
     def sendbutton_fuction(self):
         sendtext = self.chat_text.toPlainText()
+        self.chat_text.setText("")
         if sendtext != "":
             self.UserTalk(sendtext)
             most_subject, relations, objects = self.corenlp.annotate_message_en(sendtext, "Wendong", "Jiqiren")
@@ -204,8 +167,6 @@ class MainWindow(QMainWindow, Ui_dialog):
             self.count = 0
             self.pointnumber = 0
         else:
-            # x, y = world_to_pixel(world_points=(self.path[self.count][0], self.path[self.count][1]),
-            #                       image_size=(2309, 2034))
             self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1] = self.path[self.count][0], \
                                                                            self.path[self.count][1]
             cv2.circle(self.Im, (self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1]), 2, (0, 0, 213), -1)
@@ -223,12 +184,12 @@ def get_random_agent_location():
             false_flag = False
             for i in range(-2, 2, 2):
                 for j in range(-2, 2, 2):
-                    if map[pixle_point[0] + i][pixle_point[1] + j] == False:
+                    if map[pixle_point[0] + i][pixle_point[1] + j]:
                         false_flag = True
                         break
-                if false_flag == True:
+                if false_flag:
                     break
-            if map[pixle_point[0]][pixle_point[1]] == True:
+            if map[pixle_point[0]][pixle_point[1]]:
                 break
     return pixle_point, point
 
