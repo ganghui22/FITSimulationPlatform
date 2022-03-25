@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1643</width>
-    <height>1021</height>
+    <height>1014</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -183,7 +183,7 @@ color: rgb(37, 194, 118);
        <x>0</x>
        <y>10</y>
        <width>910</width>
-       <height>891</height>
+       <height>910</height>
       </rect>
      </property>
      <property name="sizePolicy">
@@ -218,7 +218,7 @@ border:2px groove gray;</string>
      <property name="geometry">
       <rect>
        <x>0</x>
-       <y>910</y>
+       <y>930</y>
        <width>910</width>
        <height>35</height>
       </rect>
@@ -257,9 +257,9 @@ color: rgb(37, 194, 118);</string>
      <property name="geometry">
       <rect>
        <x>10</x>
-       <y>-10</y>
+       <y>0</y>
        <width>251</width>
-       <height>961</height>
+       <height>951</height>
       </rect>
      </property>
      <property name="sizePolicy">
@@ -335,8 +335,26 @@ QListWidget::item:selected:!active{border: 1px solid  rgb(247, 247, 247); backgr
      <height>28</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <addaction name="action_open_map"/>
+    <addaction name="action_exit"/>
+   </widget>
+   <addaction name="menuFile"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
+  <action name="action_open_map">
+   <property name="text">
+    <string>&amp;open_map</string>
+   </property>
+  </action>
+  <action name="action_exit">
+   <property name="text">
+    <string>&amp;exit</string>
+   </property>
+  </action>
  </widget>
  <resources/>
  <connections/>
