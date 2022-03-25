@@ -6,13 +6,11 @@ from PyQt5.QtCore import QTimer, QSize, QDateTime
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 
-from MainWindow import Ui_MainWindow
+from QtCustomComponents.MainWindow import Ui_MainWindow
 from PathPlanningAstar.astar import world_to_pixel, Map, smooth_path2
 from PathPlanningAstar.Simulator_llj import search
 from CoreNLP.CoreNLP import CorenNLP
 from QtCustomComponents.qnchatmessage import QNChatMessage
-HeadWidth = 80
-HeadHight = 80
 
 location_list = {
     'elevator_1': (14.30, -51.42),
@@ -47,6 +45,7 @@ Person = {
     }
 }
 
+
 class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
@@ -63,7 +62,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.RobotCurrentPoint_pix, self.RobotCurrentPoint = get_random_agent_location()
         self.RobotTargetPoint_pix = None
         cv2.circle(self.Im, (self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1]), 10, (0, 0, 255), -1)
-        self.show_pic(self.Im)
+        self.__show_pic(self.Im)
         self.path = []
         self.corenlp = CorenNLP()
         self.Currentuser = Person['WenDong']
@@ -71,16 +70,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.path_map = Map()
         self.userhead.setPixmap(QPixmap("ProfilePicture/" + self.Currentuser['head']))
 
-
-    def dealMessage(self, messageW: QNChatMessage, item: QListWidgetItem,
-                    text: str, name: str, time: int, usertype: QNChatMessage.User_Type):
+    def __dealMessage(self, messageW: QNChatMessage, item: QListWidgetItem,
+                      text: str, name: str, time: int, usertype: QNChatMessage.User_Type):
         messageW.setFixedWidth(self.width())
         size = messageW.fontRect(text, name)
         item.setSizeHint(size)
         messageW.setText(text, time, name, size, usertype)
         self.listWidget.setItemWidget(item, messageW)
 
-    def dealMessageTime(self, curMsgTime: int):
+    def __dealMessageTime(self, curMsgTime: int):
         isShowTime = False
         if self.listWidget.count() > 0:
             lastItem = self.listWidget.item(self.listWidget.count() - 1)
@@ -99,28 +97,29 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             messageTime.setText(str(curMsgTime), curMsgTime, "", size, QNChatMessage.User_Type.User_Time)
             self.listWidget.setItemWidget(itemTime, messageTime)
 
-    def show_pic(self, cv2image) -> None:
+    def __show_pic(self, cv2image) -> None:
         cv2image = cv2.resize(cv2image, (2300, 2000), interpolation=cv2.INTER_CUBIC)
         showImage = QImage(cv2image.data, cv2image.shape[1], cv2image.shape[0], QImage.Format_RGB888)
         self.map.setPixmap(QPixmap.fromImage(showImage))
 
     def UserTalk(self, message: str):
         t = QDateTime.currentDateTime().toTime_t()
-        self.dealMessageTime(t)
+        self.__dealMessageTime(t)
         messageW = QNChatMessage(self.listWidget.parentWidget())
         messageW.setPixUser("ProfilePicture/" + self.Currentuser['head'])
         item = QListWidgetItem(self.listWidget)
-        self.dealMessage(messageW, item, message, self.Currentuser['name'], t, QNChatMessage.User_Type.User_She)
+        self.__dealMessage(messageW, item, message, self.Currentuser['name'], t, QNChatMessage.User_Type.User_She)
         self.listWidget.setCurrentRow(self.listWidget.count() - 1)
 
     def Robotalk(self, message: str):
         t = QDateTime.currentDateTime().toTime_t()
-        self.dealMessageTime(t)
+        self.__dealMessageTime(t)
         messageW = QNChatMessage(self.listWidget.parentWidget())
         print(self.listWidget.parentWidget().width())
         item = QListWidgetItem(self.listWidget)
-        self.dealMessage(messageW, item, message, "Robot", t, QNChatMessage.User_Type.User_Me)
+        self.__dealMessage(messageW, item, message, "Robot", t, QNChatMessage.User_Type.User_Me)
         self.listWidget.setCurrentRow(self.listWidget.count() - 1)
+
     def userchanged(self):
         currentuser = self.UserComboBox.currentText()
         for key in Person:
@@ -132,7 +131,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def cleartrackbutton_function(self):
         self.Im = cv2.imread('PathPlanningAstar/fit4_5Dealing.png')
         cv2.circle(self.Im, (self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1]), 10, (0, 0, 255), -1)
-        self.show_pic(self.Im)
+        self.__show_pic(self.Im)
 
     def sendbutton_fuction(self):
         sendtext = self.chat_text.toPlainText()
@@ -170,7 +169,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1] = self.path[self.count][0], \
                                                                            self.path[self.count][1]
             cv2.circle(self.Im, (self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1]), 2, (0, 0, 213), -1)
-            self.show_pic(self.Im)
+            self.__show_pic(self.Im)
             self.count = self.count + 1
 
 

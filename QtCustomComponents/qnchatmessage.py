@@ -271,4 +271,7 @@ class QNChatMessage(QWidget):
             te_font.setFamily("Arial")
             te_font.setPointSize(10)
             painter.setFont(te_font)
-            painter.drawText(self.rect(), Qt.AlignCenter, self.m_curTime)
+            rect = self.rect()
+            rect.setRect(rect.x(), rect.y(), 441, rect.height())
+
+            painter.drawText(rect, Qt.AlignCenter, self.m_curTime)
