@@ -84,7 +84,7 @@ class CorenNLP:
                 most_relation = relation
         if most_subject == "Jiqiren":
             most_subject = "Robot"
-        return [most_subject, relations, objects]
+        return [most_subject, relations, objects, process_sentence]
 
     def annotate_message_ch(self, message: str, fromuser: str, touser: str) -> list:
         annotators = self.client.annotate(message)
