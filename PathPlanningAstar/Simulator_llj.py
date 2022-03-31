@@ -11,11 +11,9 @@ sys.setrecursionlimit(100000)  # 例如这里设置为十万
 
 
 class search():
-    def __init__(self, start, goal, map):
+    def __init__(self, map):
         self.map = map
         self.width, self.height, self.obstacles = self.map.width, self.map.height, self.map.obscale
-        self.start = start
-        self.goal = goal
         self.algoflag = 3
         self.initializer = Init.Initialize(self.height, self.width, self.obstacles)
         self.flag = False
@@ -23,6 +21,8 @@ class search():
         self.cost = 0
 
     def make_path(self,start, goal):
+        self.start = start
+        self.goal = goal
         if self.initializer.gridworld.cells[self.goal[0]][self.goal[1]].obstacle == True:
             raise ('Goal is an obstacle!')
 
@@ -62,11 +62,7 @@ class search():
 
 if __name__ == '__main__':
     path_map = Map()
-    path_search1 = search(start=(920, 1614), goal=(1700, 154), map=path_map)
-
-    print(path_search1.make_path())
-    del path_search1
-    print(2)
-    path_search2 = search(start=(1700, 154), goal=(1470, 1820), map=path_map)
+    a=search(map=path_map)
+    print(a.make_path(start=(920, 1614), goal=(1700, 154)))
     print(1)
-    print(path_search2.make_path())
+    print(a.make_path(start=(1700, 154), goal=(1470, 1820)))

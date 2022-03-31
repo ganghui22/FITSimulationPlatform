@@ -81,6 +81,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.__path_map = Map()
         self.userhead.setPixmap(QPixmap("ProfilePicture/" + self.Currentuser['head']))
         self.__question_answerer = pipeline('question-answering')
+        self.__search=search(map=self.__path_map)
 
     def __dealMessage(self, messageW: QNChatMessage, item: QListWidgetItem,
                       text: str, name: str, time: int, usertype: QNChatMessage.User_Type):
@@ -256,11 +257,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 waitTime, [goalX, goalY] = self.__movesequence.pop(0)
                 print(waitTime, goalX, goalY)
                 print(self.RobotCurrentPoint_pix)
-                path_search = search(start=(self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1]),
-                                     goal=(goalX, goalY), map=self.__path_map)
 
-                self.__currentmovepath = path_search.make_path()
-                QThread.msleep(waitTime)
+                self.__currentmovepath = self.__search.make_path(start=(self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1]),
+                                     goal=(goalX, goalY))
+                # QThread.msleep(waitTime)
+                print(self.__currentmovepath)
                 self.RobotTargetPoint_pix = [self.__currentmovepath[-1][0], self.__currentmovepath[-1][1]]
                 cv2.circle(self.Im, (self.RobotTargetPoint_pix[0], self.RobotTargetPoint_pix[1]), 10, (255, 0, 0), -1)
                 self.__movetimer.start(5)
