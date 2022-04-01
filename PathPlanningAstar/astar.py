@@ -8,18 +8,18 @@ import cv2
 
 class Map:
     """
-	The Map class - this builds a map from a given map image
-	Given map image is a binary image - it is already an occupancy grid map
-	Coordinates must be converted from pixels to world when used
-	For each pixel on the map, store value of the pixel - true if pixel obstacle-free,
-	false otherwise
-	"""
+    The Map class - this builds a map from a given map image
+    Given map image is a binary image - it is already an occupancy grid map
+    Coordinates must be converted from pixels to world when used
+    For each pixel on the map, store value of the pixel - true if pixel obstacle-free,
+    false otherwise
+    """
 
-    def __init__(self):
+    def __init__(self, mapPath):
         """
-		Construct an occupancy grid map from the image
-		"""
-        self.map_image = Image.open('PathPlanningAstar/middle.png')#PathPlanningAstar/middle.png
+        Construct an occupancy grid map from the image
+        """
+        self.map_image = Image.open(mapPath)  # PathPlanningAstar/middle.png
         self.width, self.height = self.map_image.size
         self.pixels = self.map_image.load()
         self.grid_map = []
@@ -33,9 +33,10 @@ class Map:
                 else:
                     row.append(True)
             self.grid_map.append(row)
-        self.obscale_start=self.obscale
-    def reinit(self,):
-        self.obscale=self.obscale_start
+        self.obscale_start = self.obscale
+
+    def reinit(self):
+        self.obscale = self.obscale_start
 
 
 def world_to_pixel(world_points):
@@ -67,32 +68,23 @@ def smooth_path2(path):
     return path
 
 
-def huatu(map, path):
-    current_map = map
-
-    for k in path:
-        # x, y = world_to_pixel(world_points=(k.x, k.y),image_size=(2309, 2034))
-        # print(x,y)
-        cv2.circle(current_map, (k[0], k[1]), 3, (0, 0, 213), -1)
-        # cv2.arrowedLine(current_map, pt1=world_to_pixel(world_points=(k.x, k.y),image_size=(2309,2034)), pt2=world_to_pixel(world_points=((k.x + 0.2),(k.x+ 0.2)),image_size=(2309,2034)),color=(0, 0, 255), thickness=2, line_type=cv2.LINE_8,shift=0, tipLength=0.1)
-
-        map_resize = current_map.copy()
-        # # 显示
-        cv2.namedWindow('findCorners', 0)
-        cv2.resizeWindow('findCorners', 700, 900)  # 自己设定窗口图片的大小
-        cv2.imshow("findCorners", current_map)
-        cv2.waitKey(1)
-    # cv2.destroyAllWindows()
-
-    # cv2.imshow('map', map_resize)
-    # # time.sleep(0.5)
-    # cv2.waitKey(1)
-    cv2.imwrite('/home/llj/PathPlanningAstar/result.png', current_map)
-    return current_map
-
-
 if __name__ == '__main__':
     from util_llj import Simulator_llj
+
+
+    def huatu(map_, path_):
+        current_map = map_
+        for k in path_:
+            cv2.circle(current_map, (k[0], k[1]), 3, (0, 0, 213), -1)
+            map_resize = current_map.copy()
+            # 显示
+            cv2.namedWindow('findCorners', 0)
+            cv2.resizeWindow('findCorners', 700, 900)  # 自己设定窗口图片的大小
+            cv2.imshow("findCorners", current_map)
+            cv2.waitKey(1)
+        cv2.imwrite('/home/llj/PathPlanningAstar/result.png', current_map)
+        return current_map
+
 
     path_search = Simulator_llj.search(start=(1700, 155), goal=(1470, 1821))
     path = path_search.make_path()

@@ -1,12 +1,11 @@
 import cv2
-import sys
 import time
-from PyQt5 import QtCore
+import random
 from PyQt5.QtCore import QTimer, QSize, QDateTime, QThread
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from QtCustomComponents.MainWindow import Ui_MainWindow
-from PathPlanningAstar.astar import world_to_pixel, Map, smooth_path2
+from PathPlanningAstar.astar import world_to_pixel, Map
 from PathPlanningAstar.Simulator_llj import search
 from CoreNLP.CoreNLP import CorenNLP
 from QtCustomComponents.qnchatmessage import QNChatMessage
@@ -57,35 +56,59 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self, parent=None):
         super(MainWindow, self).__init__(parent)
         self.setupUi(self)
-        self.Send_Button.clicked.connect(self.sendbutton_fuction)
-        self.UserComboBox.currentIndexChanged.connect(self.__userchanged)
-        self.cleartrackbutton.clicked.connect(self.__cleartrackbutton_function)
+
+        # 一些槽函数的连接
+        self.Send_Button.clicked.connect(self.sendButtonFuction)
+        self.UserComboBox.currentIndexChanged.connect(self.__userChanged)
+        self.cleartrackbutton.clicked.connect(self.__clearTrackButtonFunction)
+
+        # 一些Qt组件的属性设置
         self.map.setScaledContents(True)
         self.userhead.setScaledContents(True)
-        self.__movetimer = QTimer(self)
-        self.__movetimer.timeout.connect(self.__moveScanf)
-        self.__movetimer.start(5)
-        self.__movesequence = []
-        self.__currentmovepath = []
+        self.RobotTargetPoint_pix = None
+
+        # 初始化一些参数
+        self.__moveSequence = []
+        self.__currentMovePath = []
+        self.__path = []
         self.__currentWaitCont = 0
         self.count = 0
-        self.__pointnumber = 0
+        self.__pointNumber = 0
+
+        # 启动CoreNLP服务，这里我设置的是使用远端的CoreNLP Sever，如果你想更改这一部分设置请去 CoreNLP/CoreNLP.py文件更改
+        self.__corenlp = CorenNLP()
+
+        # 初始化transformers question-answering模型
+        self.__question_answerer = pipeline('question-answering')
+
+        # 读入地图
         self.Im = cv2.imread('PathPlanningAstar/fit4_5Dealing.png')
-        self.RobotCurrentPoint_pix, self.RobotCurrentPoint = get_random_agent_location()
-        self.RobotTargetPoint_pix = None
+        self.__path_map = Map("PathPlanningAstar/middle.png")
+
+        # 初始化路径规划模块
+        self.__search = search(map=self.__path_map)
+
+        # 生成机器人随机位置
+        self.RobotCurrentPoint_pix, self.RobotCurrentPoint = self.__getRandomAgentLocation()
         cv2.circle(self.Im, (self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1]), 10, (0, 0, 255), -1)
         self.__show_pic(self.Im)
-        self.__path = []
-        self.__corenlp = CorenNLP()
-        self.Currentuser = Person['WenDong']
+
+        # 初始化当前用户
+        self.CurrentUser = Person['WenDong']
         self.__RobotHead = "robot.jpeg"
-        self.__path_map = Map()
-        self.userhead.setPixmap(QPixmap("ProfilePicture/" + self.Currentuser['head']))
-        self.__question_answerer = pipeline('question-answering')
-        self.__search = search(map=self.__path_map)
+        self.userhead.setPixmap(QPixmap("ProfilePicture/" + self.CurrentUser['head']))
+
+        # 初始化动作扫描服务
+        self.__moveTimer = QTimer(self)
+        self.__moveTimer.timeout.connect(self.__moveScanf)
+        self.__moveSpeed = 5
+        self.__moveTimer.start(self.__moveSpeed)
 
     def __dealMessage(self, messageW: QNChatMessage, item: QListWidgetItem,
                       text: str, name: str, time: int, usertype: QNChatMessage.User_Type):
+        """
+        处理消息气泡显示效果的函数
+        """
         messageW.setFixedWidth(self.width())
         size = messageW.fontRect(text, name)
         item.setSizeHint(size)
@@ -93,6 +116,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.listWidget.setItemWidget(item, messageW)
 
     def __dealMessageTime(self, curMsgTime: int):
+        """
+        处理对话时时间显示函数
+        """
         isShowTime = False
         if self.listWidget.count() > 0:
             lastItem = self.listWidget.item(self.listWidget.count() - 1)
@@ -126,9 +152,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         t = QDateTime.currentDateTime().toTime_t()
         self.__dealMessageTime(t)
         messageW = QNChatMessage(self.listWidget.parentWidget())
-        messageW.setPixUser("ProfilePicture/" + self.Currentuser['head'])
+        messageW.setPixUser("ProfilePicture/" + self.CurrentUser['head'])
         item = QListWidgetItem(self.listWidget)
-        self.__dealMessage(messageW, item, message, self.Currentuser['name'], t, QNChatMessage.User_Type.User_She)
+        self.__dealMessage(messageW, item, message, self.CurrentUser['name'], t, QNChatMessage.User_Type.User_She)
         self.listWidget.setCurrentRow(self.listWidget.count() - 1)
 
     def Robotalk(self, message: str) -> None:
@@ -170,15 +196,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                    time.strftime("%Y-%m-%d %H:%M:%S") + ":</font>\n" +
                                    logText + "\n")
 
-    def __userchanged(self):
-        currentuser = self.UserComboBox.currentText()
+    def __userChanged(self):
+        currentUser = self.UserComboBox.currentText()
         for key in Person:
-            if currentuser == key:
-                self.Currentuser = Person[key]
+            if currentUser == key:
+                self.CurrentUser = Person[key]
                 break
-        self.userhead.setPixmap(QPixmap("ProfilePicture/" + self.Currentuser['head']))
+        self.userhead.setPixmap(QPixmap("ProfilePicture/" + self.CurrentUser['head']))
 
-    def __cleartrackbutton_function(self):
+    def __clearTrackButtonFunction(self):
         """
         清除轨迹
         """
@@ -186,13 +212,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         cv2.circle(self.Im, (self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1]), 10, (0, 0, 255), -1)
         self.__show_pic(self.Im)
 
-    def sendbutton_fuction(self):
+    def sendButtonFuction(self):
+        """
+        用户消息发送
+        """
         sendText = self.chat_text.toPlainText()
         self.chat_text.setText("")
         if sendText != "":
             self.UserTalk(sendText)
             most_subject, relations, objects, process_sentence = self.__corenlp.annotate_message_en(
-                sendText, self.Currentuser['name'], "Jiqiren")
+                sendText, self.CurrentUser['name'], "Jiqiren")
             robotReply = "ok"
             if most_subject is not None:
                 if most_subject == "Robot" and len(relations) != 0:
@@ -242,62 +271,74 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def addMoveSequence(self, Sequence: [int, [int, int]]):
         """
-        添加动作序列
+        添加动作序列，传入动作序列Sequence，Sequence格式为[waitTime,
+        [goalX, goalY]], waitTime表示机器人在执行动作序列之前要等待的时间
+        ，单位ms. goalX，goalY分别表示该动作序列要到达的点
+
+        :param Sequence: 动作序列
+        :return:
         """
-        self.__movesequence.append(Sequence)
+        self.__moveSequence.append(Sequence)
 
     def StartActionSequence(self):
         """
         启动动作序列的依次执行
         """
-        self.__movetimer.start()
+        self.__moveTimer.start(self.__moveSpeed)
 
     def StopActionSequence(self):
         """
         停止动作序列的执行和
         """
-        self.__movetimer.stop()
+        self.__moveTimer.stop()
 
     def __moveScanf(self):
         """
         动作序列的扫描函数
         """
-        if self.__currentmovepath:
-            self.RobotCurrentPoint_pix = self.__currentmovepath.pop(0)
-            self.RobotCurrentPoint_pix = [self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1]]
-            cv2.circle(self.Im, (self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1]), 2, (0, 0, 213), -1)
-            self.__show_pic(self.Im)
-        else:
-            if self.__movesequence:
-                self.__movetimer.stop()
-                waitTime, [goalX, goalY] = self.__movesequence.pop(0)
-                print(waitTime, goalX, goalY)
-                self.__currentmovepath = self.__search.make_path(start=(self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1]),
-                                     goal=(goalX, goalY))
-                QThread.msleep(waitTime)
-                self.RobotTargetPoint_pix = [self.__currentmovepath[-1][0], self.__currentmovepath[-1][1]]
-                cv2.circle(self.Im, (self.RobotTargetPoint_pix[0], self.RobotTargetPoint_pix[1]), 10, (255, 0, 0), -1)
-                self.__movetimer.start(5)
+        if self.__currentMovePath:  # 当路径序列不为空时执行当前路径
+            self.RobotCurrentPoint_pix = self.__currentMovePath.pop(0)  # 读出路径序列第一个元素
+            self.RobotCurrentPoint_pix = [self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1]]  # 更新当前位置
+            cv2.circle(self.Im, (self.RobotCurrentPoint_pix[0],  # 画点
+                                 self.RobotCurrentPoint_pix[1]), 2, (0, 0, 213), -1)
+            self.__show_pic(self.Im)  # 刷新显示
+        else:  # 当路径列表读空之后，扫描动作序列
+            if self.__moveSequence:  # 当动作序列不为空时
+                self.__moveTimer.stop()  # 先暂停扫描函数的触发
+                waitTime, [goalX, goalY] = self.__moveSequence.pop(0)  # 读出动作序列第一个元素
+                self.__currentMovePath = self.__search.make_path(  # 路径规划，并把路径加入路径序列
+                    start=(self.RobotCurrentPoint_pix[0],
+                           self.RobotCurrentPoint_pix[1]),
+                    goal=(goalX, goalY))
+                QThread.msleep(waitTime)  # 等待时间
+                self.RobotTargetPoint_pix = [self.__currentMovePath[-1][0], self.__currentMovePath[-1][1]]  # 更新当前目标点
+                cv2.circle(self.Im, (self.RobotTargetPoint_pix[0], self.RobotTargetPoint_pix[1]),  # 在地图上标出目标点
+                           10, (255, 0, 0), -1)
+                self.__show_pic(self.Im)  # 刷新显示
+                self.__moveTimer.start(self.__moveSpeed)  # 重启扫描
 
+    def __getRandomAgentLocation(self) -> [[int, int], [int, int]]:
+        """
+        随机生成机器人位置
 
-def get_random_agent_location():
-    import random
-    map = Map().grid_map
-    while True:
-        point = (random.choice(range(-80, 80)), random.choice(range(-80, 80)))
-        pixle_point = world_to_pixel(world_points=point)
-        if 0 <= pixle_point[0] < 2309 and 0 <= pixle_point[1] < 2034:
-            false_flag = False
-            for i in range(-2, 2, 2):
-                for j in range(-2, 2, 2):
-                    if map[pixle_point[0] + i][pixle_point[1] + j]:
-                        false_flag = True
+        :return: pixle_point-像素坐标，point-世界坐标
+        """
+        map = self.__path_map.grid_map
+        while True:
+            point = (random.choice(range(-80, 80)), random.choice(range(-80, 80)))
+            pixle_point = world_to_pixel(world_points=point)
+            if 0 <= pixle_point[0] < 2309 and 0 <= pixle_point[1] < 2034:
+                false_flag = False
+                for i in range(-2, 2, 2):
+                    for j in range(-2, 2, 2):
+                        if map[pixle_point[0] + i][pixle_point[1] + j]:
+                            false_flag = True
+                            break
+                    if false_flag:
                         break
-                if false_flag:
+                if map[pixle_point[0]][pixle_point[1]]:
                     break
-            if map[pixle_point[0]][pixle_point[1]]:
-                break
-    return pixle_point, point
+        return pixle_point, point
 
 
 def main():
