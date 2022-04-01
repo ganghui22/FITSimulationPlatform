@@ -58,8 +58,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         super(MainWindow, self).__init__(parent)
         self.setupUi(self)
         self.Send_Button.clicked.connect(self.sendbutton_fuction)
-        self.UserComboBox.currentIndexChanged.connect(self.userchanged)
-        self.cleartrackbutton.clicked.connect(self.cleartrackbutton_function)
+        self.UserComboBox.currentIndexChanged.connect(self.__userchanged)
+        self.cleartrackbutton.clicked.connect(self.__cleartrackbutton_function)
         self.map.setScaledContents(True)
         self.userhead.setScaledContents(True)
         self.__movetimer = QTimer(self)
@@ -116,7 +116,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         showImage = QImage(cv2image.data, cv2image.shape[1], cv2image.shape[0], QImage.Format_RGB888)
         self.map.setPixmap(QPixmap.fromImage(showImage))
 
-    def UserTalk(self, message: str):
+    def UserTalk(self, message: str) -> None:
+        """
+        用户说话
+
+        :param message: 消息文本
+        :return:
+        """
         t = QDateTime.currentDateTime().toTime_t()
         self.__dealMessageTime(t)
         messageW = QNChatMessage(self.listWidget.parentWidget())
@@ -125,7 +131,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.__dealMessage(messageW, item, message, self.Currentuser['name'], t, QNChatMessage.User_Type.User_She)
         self.listWidget.setCurrentRow(self.listWidget.count() - 1)
 
-    def Robotalk(self, message: str):
+    def Robotalk(self, message: str) -> None:
+        """
+        机器人说话
+
+        :param message: 消息文本
+        :return:
+        """
         t = QDateTime.currentDateTime().toTime_t()
         self.__dealMessageTime(t)
         messageW = QNChatMessage(self.listWidget.parentWidget())
@@ -138,7 +150,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         打印信息
         """
-        self.chat_interface.append("<font color='green'>[Info]</font>" + "<font color='blue'>" +
+        self.chat_interface.append("<font background-color='green'>[Info]</font>" + "<font color='blue'>" +
                                    time.strftime("%Y-%m-%d %H:%M:%S") + ":</font>\n" +
                                    logText + "\n")
 
@@ -146,7 +158,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         打印警告
         """
-        self.chat_interface.append("<font color='yellow'>[Warn]</font>" + "<font color='blue'>" +
+        self.chat_interface.append("<font background-color='yellow'>[Warn]</font>" + "<font color='blue'>" +
                                    time.strftime("%Y-%m-%d %H:%M:%S") + ":</font>\n" +
                                    logText + "\n")
 
@@ -154,11 +166,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         打印错误
         """
-        self.chat_interface.append("<font color='red'>[Error]</font>" + "<font color='blue'>" +
+        self.chat_interface.append("<font background-color='red'>[Error]</font>" + "<font color='blue'>" +
                                    time.strftime("%Y-%m-%d %H:%M:%S") + ":</font>\n" +
                                    logText + "\n")
 
-    def userchanged(self):
+    def __userchanged(self):
         currentuser = self.UserComboBox.currentText()
         for key in Person:
             if currentuser == key:
@@ -166,7 +178,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 break
         self.userhead.setPixmap(QPixmap("ProfilePicture/" + self.Currentuser['head']))
 
-    def cleartrackbutton_function(self):
+    def __cleartrackbutton_function(self):
+        """
+        清除轨迹
+        """
         self.Im = cv2.imread('PathPlanningAstar/fit4_5Dealing.png')
         cv2.circle(self.Im, (self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1]), 10, (0, 0, 255), -1)
         self.__show_pic(self.Im)
@@ -210,7 +225,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                 if Person[nextGoalName]['position']:
                                     goalX, goalY = world_to_pixel([Person[nextGoalName]['position'][0],
                                                                    Person[nextGoalName]['position'][1]])
-                                    self.addMoveSequence([0, [goalX, goalY]])
+                                    self.addMoveSequence([15000, [goalX, goalY]])
                                     self.logInfo("add move sequence: " + nextGoalName)
                                     robotReply = "ok"
                                 else:
@@ -259,24 +274,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 print(waitTime, goalX, goalY)
                 self.__currentmovepath = self.__search.make_path(start=(self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1]),
                                      goal=(goalX, goalY))
-                # QThread.msleep(waitTime)
+                QThread.msleep(waitTime)
                 self.RobotTargetPoint_pix = [self.__currentmovepath[-1][0], self.__currentmovepath[-1][1]]
                 cv2.circle(self.Im, (self.RobotTargetPoint_pix[0], self.RobotTargetPoint_pix[1]), 10, (255, 0, 0), -1)
                 self.__movetimer.start(5)
-        # if self.__moveflag:
-        #     self.__currentmovepath = []
-        # else:
-
-        # if self.count >= self.__pointnumber:
-        #     self.__movetimer.stop()
-        #     self.count = 0
-        #     self.__pointnumber = 0
-        # else:
-        #     self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1] = self.__path[self.count][0], \
-        #                                                                    self.__path[self.count][1]
-        #     cv2.circle(self.Im, (self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1]), 2, (0, 0, 213), -1)
-        #     self.__show_pic(self.Im)
-        #     self.count = self.count + 1
 
 
 def get_random_agent_location():
