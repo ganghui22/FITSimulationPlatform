@@ -19,7 +19,7 @@ class Map:
         """
 		Construct an occupancy grid map from the image
 		"""
-        self.map_image = Image.open('PathPlanningAstar/middle.png')
+        self.map_image = Image.open('PathPlanningAstar/middle.png')#PathPlanningAstar/middle.png
         self.width, self.height = self.map_image.size
         self.pixels = self.map_image.load()
         self.grid_map = []
@@ -33,6 +33,9 @@ class Map:
                 else:
                     row.append(True)
             self.grid_map.append(row)
+        self.obscale_start=self.obscale
+    def reinit(self,):
+        self.obscale=self.obscale_start
 
 
 def world_to_pixel(world_points):

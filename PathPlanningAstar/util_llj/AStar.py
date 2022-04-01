@@ -1,16 +1,16 @@
 from PathPlanningAstar.util_llj.Datatypes import *
 import sys
 
-frontier = PriorityQueue()
-start = set()
-goal = set()
-explored = {}
-cost = {}
 
 
 class AStar:
     def __init__(self):
-        pass
+        self.frontier = PriorityQueue()
+        self.start = set()
+        self.goal = set()
+        self.explored = {}
+        self.cost = {}
+
 
     def heuristic(self, a, b, n=1):
         dx = abs(b[0] - a[0])
@@ -32,19 +32,23 @@ class AStar:
         else:
             return dx + dy + (2 ** 0.5 - 2) * min(dx, dy)
 
+    def reinit(self):
+        self.frontier = PriorityQueue()
+        self.start = set()
+        self.goal = set()
+        self.explored = {}
+        self.cost = {}
+
     def search(self, gridworld, begin, end):
-        global frontier
-        global start, goal, explored, cost
+        self.start = begin
+        self.goal = end
+        self.frontier.put(self.start, 0)
 
-        start = begin;
-        goal = end
-        frontier.put(start, 0)
+        self.explored[self.start] = None
+        self.cost[self.start] = 0
 
-        explored[start] = None
-        cost[start] = 0
-
-        gridworld.mark(start)
-        gridworld.markpath(start)
+        gridworld.mark(self.start)
+        gridworld.markpath(self.start)
 
         if self.proceed(gridworld) == 1:
             self.makepath()
@@ -54,42 +58,39 @@ class AStar:
             return True
 
     def proceed(self, gridworld):
-        global frontier
-        global start, goal, explored, cost
-
-        if frontier.isEmpty():
+        if self.frontier.isEmpty():
             return 1
 
         else:
-            current = frontier.get()
+            current = self.frontier.get()
 
-            if current == goal:
+            if current == self.goal:
                 return 1
             # sys.exit()
             for next in gridworld.get8Neighbors(current):
                 if next[0] == current[0] or next[1] == current[1]:
-                    newcost = cost[current] + 5
+                    newcost = self.cost[current] + 5
                 else:
-                    newcost = cost[current] + 7
+                    newcost = self.cost[current] + 7
 
-                if next not in cost:
-                    cost[next] = newcost
-                    priority = newcost + self.heuristic(next, goal)
-                    # print(newcost,priority)
-                    frontier.put(next, priority)
+                if next not in self.cost:
+                    self.cost[next] = newcost
+                    priority = newcost + self.heuristic(next, self.goal)
+                    # print(newself.cost,priority)
+                    self.frontier.put(next, priority)
                     gridworld.mark(next)
-                    explored[next] = current
+                    self.explored[next] = current
 
         return 0
 
     def makepath(self, gridworld):
-        global goal, explored, cost, start
+
         path = []
-        current = goal
-        while current != start:
+        current = self.goal
+        while current != self.start:
             path.append(current)
             gridworld.markpath(current)
-            current = explored[current]
-        path.reverse();
-        path = [start] + path
-        return path, explored, cost
+            current = self.explored[current]
+        path.reverse()
+        path = [self.start] + path
+        return path, self.explored, self.cost
