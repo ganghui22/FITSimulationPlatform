@@ -16,7 +16,7 @@ ENGLISH_ANNOTATORS = ['tokenize', 'ssplit', 'pos', 'lemma', 'ner', 'parse', 'dep
 class CorenNLP:
     def __init__(self):
         with CoreNLPClient(
-                endpoint="http://192.168.1.4:9000",
+                endpoint="http://pi.ganghui22.com",
                 annotators=ENGLISH_ANNOTATORS,
                 start_server=stanza.server.StartServer.DONT_START,
                 memory='6G') as client:

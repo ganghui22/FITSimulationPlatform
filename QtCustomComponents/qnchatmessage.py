@@ -259,7 +259,6 @@ class QNChatMessage(QWidget):
             option = QTextOption(Qt.AlignLeft)
             option.setWrapMode(QTextOption.WrapAtWordBoundaryOrAnywhere)
             painter.setFont(self.font())
-            print(self.m_msg)
             painter.drawText(self.m_textRightRect, self.m_msg, option)
         if self.m_userType == self.User_Type.User_Time:
             penText = QPen()

@@ -7,7 +7,7 @@ from PyQt5.QtGui import *
 from QtCustomComponents.MainWindow import Ui_MainWindow
 from PathPlanningAstar.astar import world_to_pixel, Map
 from PathPlanningAstar.Simulator_llj import search
-from CoreNLP.CoreNLP import CorenNLP
+from NlpToolKit.CoreNLP import CorenNLP
 from QtCustomComponents.qnchatmessage import QNChatMessage
 from transformers import pipeline
 from PathPlanningAstar.util_llj.AStar import *
@@ -22,12 +22,12 @@ location_list = {
 Person = {
     "GangHui": {
         "name": "GangHui",
-        "position": (),
+        "position": (74.90, 10.18),
         "head": "Ganghui.jpeg"
     },
     "LanJun": {
         "name": "LanJun",
-        "position": (),
+        "position": (10.10, -3.37),
         "head": "Lanjun.jpeg"
     },
     "WenDong": {
@@ -60,7 +60,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # 一些槽函数的连接
         self.Send_Button.clicked.connect(self.sendButtonFuction)
         self.UserComboBox.currentIndexChanged.connect(self.__userChanged)
-        self.cleartrackbutton.clicked.connect(self.__clearTrackButtonFunction)
+        self.cleartrackbutton.clicked.connect(self.__clearTrackFunction)
 
         # 一些Qt组件的属性设置
         self.map.setScaledContents(True)
@@ -75,7 +75,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.count = 0
         self.__pointNumber = 0
 
-        # 启动CoreNLP服务，这里我设置的是使用远端的CoreNLP Sever，如果你想更改这一部分设置请去 CoreNLP/CoreNLP.py文件更改
+        # 启动CoreNLP服务，这里我设置的是使用远端的CoreNLP Sever，如果你想更改这一部分设置请去 NlpToolKit/NlpToolKit.py文件更改
         self.__corenlp = CorenNLP()
 
         # 初始化transformers question-answering模型
@@ -167,7 +167,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         t = QDateTime.currentDateTime().toTime_t()
         self.__dealMessageTime(t)
         messageW = QNChatMessage(self.listWidget.parentWidget())
-        print(self.listWidget.parentWidget().width())
         item = QListWidgetItem(self.listWidget)
         self.__dealMessage(messageW, item, message, "Robot", t, QNChatMessage.User_Type.User_Me)
         self.listWidget.setCurrentRow(self.listWidget.count() - 1)
@@ -176,7 +175,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         打印信息
         """
-        self.chat_interface.append("<font background-color='green'>[Info]</font>" + "<font color='blue'>" +
+        self.chat_interface.append("<style type='text/css'>.background span{"
+                                   "display:inline-block;background:#28FF28;border:2px "
+                                   "solid;color:#000;text-align:left;}</style>" +
+                                   "<font class='background'><span>[Info]</span></font>" + "<font color='blue'>" +
                                    time.strftime("%Y-%m-%d %H:%M:%S") + ":</font>\n" +
                                    logText + "\n")
 
@@ -184,7 +186,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         打印警告
         """
-        self.chat_interface.append("<font background-color='yellow'>[Warn]</font>" + "<font color='blue'>" +
+        self.chat_interface.append("<style type='text/css'>.background span{"
+                                   "display:inline-block;background:#FFD306;border:2px "
+                                   "solid;color:#000;text-align:left;}</style>" +
+                                   "<font background-color='yellow'>[Warn]</font>" + "<font color='blue'>" +
                                    time.strftime("%Y-%m-%d %H:%M:%S") + ":</font>\n" +
                                    logText + "\n")
 
@@ -192,7 +197,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         打印错误
         """
-        self.chat_interface.append("<font background-color='red'>[Error]</font>" + "<font color='blue'>" +
+        self.chat_interface.append("<style type='text/css'>.background span{"
+                                   "display:inline-block;background:#EA0000;border:2px "
+                                   "solid;color:#000;text-align:left;}</style>" +
+                                   "<font background-color='red'>[Error]</font>" + "<font color='blue'>" +
                                    time.strftime("%Y-%m-%d %H:%M:%S") + ":</font>\n" +
                                    logText + "\n")
 
@@ -204,7 +212,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 break
         self.userhead.setPixmap(QPixmap("ProfilePicture/" + self.CurrentUser['head']))
 
-    def __clearTrackButtonFunction(self):
+    def __clearTrackFunction(self):
         """
         清除轨迹
         """
@@ -222,6 +230,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.UserTalk(sendText)
             most_subject, relations, objects, process_sentence = self.__corenlp.annotate_message_en(
                 sendText, self.CurrentUser['name'], "Jiqiren")
+            process_sentence = process_sentence.replace("Jiqiren", "Robot")
+            self.logInfo("process sentence: " + process_sentence)
             robotReply = "ok"
             if most_subject is not None:
                 if most_subject == "Robot" and len(relations) != 0:
@@ -241,7 +251,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                 if Person[answer]['position']:
                                     goalX, goalY = world_to_pixel([Person[answer]['position'][0],
                                                                    Person[answer]['position'][1]])
-                                    self.addMoveSequence([0, [goalX, goalY]])
+                                    self.addMoveSequence([0, [goalX, goalY], Person[answer]['name']])
                                     self.logInfo("add move sequence: " + answer)
                                 else:
                                     self.logError("{} is not position".format(answer))
@@ -254,7 +264,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                 if Person[nextGoalName]['position']:
                                     goalX, goalY = world_to_pixel([Person[nextGoalName]['position'][0],
                                                                    Person[nextGoalName]['position'][1]])
-                                    self.addMoveSequence([15000, [goalX, goalY]])
+                                    self.addMoveSequence([5000, [goalX, goalY], Person[nextGoalName]['name']])
                                     self.logInfo("add move sequence: " + nextGoalName)
                                     robotReply = "ok"
                                 else:
@@ -269,7 +279,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 robotReply = "Sorry,I dont know what you say."
             self.Robotalk(robotReply)
 
-    def addMoveSequence(self, Sequence: [int, [int, int]]):
+    def addMoveSequence(self, Sequence: [int, [int, int], str]):
         """
         添加动作序列，传入动作序列Sequence，Sequence格式为[waitTime,
         [goalX, goalY]], waitTime表示机器人在执行动作序列之前要等待的时间
@@ -305,12 +315,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:  # 当路径列表读空之后，扫描动作序列
             if self.__moveSequence:  # 当动作序列不为空时
                 self.__moveTimer.stop()  # 先暂停扫描函数的触发
-                waitTime, [goalX, goalY] = self.__moveSequence.pop(0)  # 读出动作序列第一个元素
+                waitTime, [goalX, goalY], name = self.__moveSequence.pop(0)  # 读出动作序列第一个元素
                 self.__currentMovePath = self.__search.make_path(  # 路径规划，并把路径加入路径序列
                     start=(self.RobotCurrentPoint_pix[0],
                            self.RobotCurrentPoint_pix[1]),
                     goal=(goalX, goalY))
+                self.__clearTrackFunction()
                 QThread.msleep(waitTime)  # 等待时间
+                self.logInfo("Current goal: " + name)
                 self.RobotTargetPoint_pix = [self.__currentMovePath[-1][0], self.__currentMovePath[-1][1]]  # 更新当前目标点
                 cv2.circle(self.Im, (self.RobotTargetPoint_pix[0], self.RobotTargetPoint_pix[1]),  # 在地图上标出目标点
                            10, (255, 0, 0), -1)
