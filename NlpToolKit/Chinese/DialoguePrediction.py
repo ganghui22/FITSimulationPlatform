@@ -2,6 +2,7 @@ from transformers import BertTokenizer
 import torch
 from model import ObjectModel
 import numpy as np
+import os
 import json
 
 GPU_NUM = 0
@@ -31,8 +32,9 @@ class DialoguePrediction:
     def __init__(self):
         self.device = torch.device('cpu')
         self.model: ObjectModel = torch.load(
-            'NlpToolKit/Chinese/model/graph_model .bin') \
+            'NlpToolKit/Chinese/model/graph_model.bin') \
             .to(self.device)
+        self.model.eval()
         self.tokenizer = BertTokenizer.from_pretrained('NlpToolKit/Chinese/model/bert/chinese-roberta-wwm-ext')
         vocab = {}
         with open('NlpToolKit/Chinese/model/bert/chinese-roberta-wwm-ext/vocab.txt', encoding='utf_8') as file:
@@ -95,3 +97,8 @@ class DialoguePrediction:
                     per_loc = i[2]
                     res[per_person][1] = per_loc
         return res
+
+
+if __name__ == '__main__':
+    dia = DialoguePrediction()
+    print(DialoguePrediction("我们下午去新东源吧"))
