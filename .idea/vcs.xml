@@ -2,6 +2,7 @@
 <project version="4">
   <component name="VcsDirectoryMappings">
     <mapping directory="$PROJECT_DIR$" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/NlpToolKit/Chinese/bert/chinese-roberta-wwm-ext" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/NlpToolKit/Chinese/model/bert/chinese-roberta-wwm-ext" vcs="Git" />
   </component>
 </project>
