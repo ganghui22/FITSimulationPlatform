@@ -32,8 +32,7 @@ class DialoguePrediction:
     def __init__(self):
         self.device = torch.device('cpu')
         self.model: ObjectModel = torch.load(
-            'NlpToolKit/Chinese/model/graph_model.bin') \
-            .to(self.device)
+            'NlpToolKit/Chinese/model/graph_model.bin', map_location='cpu')
         self.model.eval()
         self.tokenizer = BertTokenizer.from_pretrained('NlpToolKit/Chinese/model/bert/chinese-roberta-wwm-ext')
         vocab = {}
