@@ -1,0 +1,34 @@
+{
+    "港晖": {
+        "name": "GangHui",
+        "position": [74.90, 10.18],
+        "head": "GangHui.jpeg"
+    },
+    "兰军": {
+        "name": "LanJun",
+        "position": [10.10, -3.37],
+        "head": "LanJun.jpeg"
+    },
+    "文栋": {
+        "name": "WenDong",
+        "position": [81.05, 13.98],
+        "head": "WenDong.jpeg"
+    },
+    "刘老师": {
+        "name": "Mr.Liu",
+        "position": [69.55, -69.32],
+        "head": "Mr.Liu.jpeg"
+    },
+    "晨峻": {
+        "name": "ChenJun",
+        "position": []
+    },
+    "伟华": {
+        "name": "WeiHua",
+        "position": []
+    },
+    "郝伟": {
+        "name": "HaoWei",
+        "position": []
+    }
+}

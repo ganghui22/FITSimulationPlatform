@@ -84,7 +84,7 @@ class DialoguePrediction:
         R = set([SPO(_spo) for _spo in spo])
         # print(R)
         res = {}
-        triple=[]
+        triple = []
         if R is not None:
             for i in R:
                 per_person = i[0]
@@ -96,11 +96,11 @@ class DialoguePrediction:
                 if i[1] == '地点':
                     per_loc = i[2]
                     res[per_person][1] = per_loc
-            for key,value in res.items():
+            for key, value in res.items():
                 triple.append(value)
         return triple
 
 
 if __name__ == '__main__':
     dia = DialoguePrediction()
-    print(DialoguePrediction("我们下午去新东源吧"))
+    print(dia("我们下午去新东源吧"))

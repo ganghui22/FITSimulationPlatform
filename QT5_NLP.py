@@ -8,40 +8,51 @@ from QtCustomComponents.MainWindow import Ui_MainWindow
 from PathPlanningAstar.astar import world_to_pixel, Map
 from PathPlanningAstar.Simulator_llj import search
 from NlpToolKit.CoreNLP import CorenNLP
+from NlpToolKit.Chinese.DialoguePrediction import DialoguePrediction as DialoguePrediction
+from NlpToolKit.Chinese.InstructionPrediction import InstructionPrediction as InstructionPrediction
 from QtCustomComponents.qnchatmessage import QNChatMessage
 from transformers import pipeline
+import re
 from PathPlanningAstar.util_llj.AStar import *
+from update_time_space_graph import deal
 
 location_list = {
-    'elevator_1': (14.30, -51.42),
-    'elevator_2': (10.10, -3.37),
-    'WenDong': (81.05, 13.98),
-    'meeting': (74.90, 10.18),
-    'Mr.Liu': (69.55, -69.32)
+    '休息室': [-19.7, 3.7],
+    '2号会议室': [-16.4, 4.1],
+    '讨论区': [-6.2, 2.3],
+    '1号会议室': [5.8, -2.3],
+    'Room510': [22.8, 4.1],
+    'Room511': [22.7, -4.2],
+    'Room512': [17.5, 4.2],
+    'Room513': [19.6, -4.2],
+    'Room514': [15, -4.3],
+    'Room515': [11.2, 2.4],
+    'Room516': [5.8, -2.3],
 }
 Person = {
-    "GangHui": {
+    "港晖": {
         "name": "GangHui",
-        "position": (74.90, 10.18),
-        "head": "Ganghui.jpeg"
+        "position": [74.90, 10.18],
+        "head": "GangHui.jpeg"
     },
-    "LanJun": {
+    "兰军": {
         "name": "LanJun",
-        "position": (10.10, -3.37),
-        "head": "Lanjun.jpeg"
+        "position": [10.10, -3.37],
+        "head": "LanJun.jpeg"
     },
-    "WenDong": {
+    "文栋": {
         "name": "WenDong",
-        "position": (81.05, 13.98),
+        "position": [81.05, 13.98],
         "head": "WenDong.jpeg"
     },
-    "Mr.Liu": {
+    "刘老师": {
         "name": "Mr.Liu",
-        "position": (69.55, -69.32),
+        "position": [69.55, -69.32],
         "head": "Mr.Liu.jpeg"
     },
-    "WangYi": {
-
+    "晨峻": {
+        "name": "ChenJun",
+        "position": []
     }
 }
 actions_lu = {
@@ -75,11 +86,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.count = 0
         self.__pointNumber = 0
 
-        # 启动CoreNLP服务，这里我设置的是使用远端的CoreNLP Sever，如果你想更改这一部分设置请去 NlpToolKit/NlpToolKit.py文件更改
-        self.__corenlp = CorenNLP()
+        # 导入自然语言处理工具
+        self._dialog_deal = DialoguePrediction() # 对话分析工具
+        self._instruction_deal = InstructionPrediction() # 指令处理工具
 
-        # 初始化transformers question-answering模型
-        self.__question_answerer = pipeline('question-answering')
+        # 初始化动态时空图谱
+        self._tp_graph = deal()
 
         # 读入地图
         self.Im = cv2.imread('PathPlanningAstar/fit4_5Dealing.png')
@@ -157,7 +169,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.__dealMessage(messageW, item, message, self.CurrentUser['name'], t, QNChatMessage.User_Type.User_She)
         self.listWidget.setCurrentRow(self.listWidget.count() - 1)
 
-    def Robotalk(self, message: str) -> None:
+    def RobotTalk(self, message: str) -> None:
         """
         机器人说话
 
@@ -222,62 +234,56 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def sendButtonFuction(self):
         """
-        用户消息发送
+        用户消息发送按钮点击事件
         """
         sendText = self.chat_text.toPlainText()
-        self.chat_text.setText("")
-        if sendText != "":
+        if sendText != '':
+            self.chat_text.setText("")
             self.UserTalk(sendText)
-            most_subject, relations, objects, process_sentence = self.__corenlp.annotate_message_en(
-                sendText, self.CurrentUser['name'], "Jiqiren")
-            process_sentence = process_sentence.replace("Jiqiren", "Robot")
-            self.logInfo("process sentence: " + process_sentence)
-            robotReply = "ok"
-            if most_subject is not None:
-                if most_subject == "Robot" and len(relations) != 0:
-                    self.logInfo("Who:{}, Doing:{}, What:{}".format(most_subject, relations[0], objects))
-                    objectNum = 0
-                    _object = []
-                    for object_ in objects:
-                        if object_ in Person.keys():
-                            _object.append(object_)
-                    if len(_object) == 2:
-                        answer = self.__question_answerer({'question': 'Where should the Robot go first?',
-                                                           'context': process_sentence})
-                        answer = answer['answer']
-                        self.logInfo("answer:" + answer)
-                        if answer in _object and _object[0] in Person.keys() and _object[1] in Person.keys():
-                            if answer in Person.keys():
-                                if Person[answer]['position']:
-                                    goalX, goalY = world_to_pixel([Person[answer]['position'][0],
-                                                                   Person[answer]['position'][1]])
-                                    self.addMoveSequence([0, [goalX, goalY], Person[answer]['name']])
-                                    self.logInfo("add move sequence: " + answer)
-                                else:
-                                    self.logError("{} is not position".format(answer))
-                                    robotReply = "Sorry,I dont know what you say."
-                                nextGoalName = ""
-                                if _object[0] == answer:
-                                    nextGoalName = _object[1]
-                                else:
-                                    nextGoalName = _object[0]
-                                if Person[nextGoalName]['position']:
-                                    goalX, goalY = world_to_pixel([Person[nextGoalName]['position'][0],
-                                                                   Person[nextGoalName]['position'][1]])
-                                    self.addMoveSequence([5000, [goalX, goalY], Person[nextGoalName]['name']])
-                                    self.logInfo("add move sequence: " + nextGoalName)
-                                    robotReply = "ok"
-                                else:
-                                    self.logError("{} is not position".format(nextGoalName))
-                                    robotReply = "Sorry,I dont know what you say."
-                        else:
-                            robotReply = "Sorry,I dont know what you say."
-                            self.logWarn("Can't tell where to go first.")
-                else:
-                    robotReply = "Sorry,I dont know what you say."
+            if self.CurrentUser != "Robot":
+                self.dealMessage(sendText, self.CurrentUser)
+
+    def dealMessage(self, sentence: str, current_user: str):
+
+        if sentence == "":
+            return
+        else:
+            if '@ Robot' not in sentence:
+                 # 提取时间、地点、人物三元组并更新动态时空图谱
+                self._tp_graph.dynamic_space_time_graph(sentence)
             else:
-                robotReply = "Sorry,I dont know what you say."
-            self.Robotalk(robotReply)
+                # 指令处理
+                self.dealInstruction(sentence)
+
+    def dealInstruction(self, sentence):
+        frame = self._instruction_deal(sentence)
+        path = []
+        if 'bring' not in frame:
+            return
+        for frameElement in frame['bring']:
+            fe = frame['bring'][frameElement]
+            if len(fe) > 1:
+                frame['bring'][frameElement] = ''.join(fe)
+        bringFrame = frame['bring']
+
+        # 判断beneficiary是否存在
+        # 不存在时
+        if 'beneficiary' not in bringFrame:
+            # 判断source 和 goal是同时存在
+            if 'source' in frame and 'goal' in frame:
+                path.append(bringFrame['source'])
+                path.append(bringFrame['goal'])
+            elif 'goal' in frame:
+                path.append(bringFrame['goal'])
+        else:
+            if 'goal' in frame and 'source' not in frame:
+                path.append(bringFrame['goal'])
+            elif 'goal' not in frame and 'source' in frame:
+                path.append(bringFrame['source'])
+        if path is not None:
+            for loc in path:
+                if loc in location_list:
+                    pass
 
     def addMoveSequence(self, Sequence: [int, [int, int], str]):
         """
@@ -286,7 +292,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         ，单位ms. goalX，goalY分别表示该动作序列要到达的点
 
         :param Sequence: 动作序列
-        :return:
+        :return: None
         """
         self.__moveSequence.append(Sequence)
 
