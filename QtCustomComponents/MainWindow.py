@@ -166,9 +166,9 @@ class Ui_MainWindow(object):
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
         MainWindow.setWindowTitle(_translate("MainWindow", "FIT4-5仿真平台"))
-        self.UserComboBox.setItemText(0, _translate("MainWindow", "WenDong"))
-        self.UserComboBox.setItemText(1, _translate("MainWindow", "Mr.Liu"))
-        self.UserComboBox.setItemText(2, _translate("MainWindow", "GangHui"))
-        self.UserComboBox.setItemText(3, _translate("MainWindow", "LanJun"))
+        self.UserComboBox.setItemText(0, _translate("MainWindow", "晨峻"))
+        self.UserComboBox.setItemText(1, _translate("MainWindow", "刘老师"))
+        self.UserComboBox.setItemText(2, _translate("MainWindow", "港晖"))
+        self.UserComboBox.setItemText(3, _translate("MainWindow", "兰军"))
         self.Send_Button.setText(_translate("MainWindow", "发送(↵)"))
         self.cleartrackbutton.setText(_translate("MainWindow", "Clear the Track"))

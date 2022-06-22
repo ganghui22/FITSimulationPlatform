@@ -72,7 +72,7 @@ def map_dealing(map_path: str) -> None:
             if labels[x, y] == max2_index:
                 map_connectedcomponents[x, y] = 255
             else:
-                map_connectedcomponents[x, y] = 204
+                map_connectedcomponents[x, y] = 0
     for x in range(width):
         for y in range(high):
             if map_origin[x, y] == 0:

@@ -29,21 +29,34 @@ class SPO(tuple):
 
 
 class DialoguePrediction:
+    """
+    该类主要是一个实时解析群聊中对话的中文工具包，将一句对话解析成{时间、地点、人物}三元组
+    """
     def __init__(self):
+        # 解析模型的载入
         self.device = torch.device('cpu')
         self.model: ObjectModel = torch.load(
             'NlpToolKit/Chinese/model/graph_model.bin', map_location='cpu')
         self.model.eval()
-        self.tokenizer = BertTokenizer.from_pretrained('NlpToolKit/Chinese/model/bert/chinese-roberta-wwm-ext')
+
+        # tokenizer的载入，从bert中载入
+        self.tokenizer = BertTokenizer.from_pretrained(r'NlpToolKit/Chinese/model/bert/chinese-roberta-wwm-ext')
+
+        # 载入词袋
         vocab = {}
-        with open('NlpToolKit/Chinese/model/bert/chinese-roberta-wwm-ext/vocab.txt', encoding='utf_8') as file:
+        with open(r'NlpToolKit/Chinese/model/bert/chinese-roberta-wwm-ext/vocab.txt', encoding='utf_8') as file:
             for l in file.readlines():
                 vocab[len(vocab)] = l.strip()
         self.vocab = vocab
+
+        # 关系转换
         self.id2predicate = {"0": "地点", "1": "时间"}
         self.predicate2id = {"地点": 0, "时间": 1}
 
     def __call__(self, sentence: str):
+        """
+        返回[人物, 时间, 地点]
+        """
         spo = []
         en = self.tokenizer(text=sentence, return_tensors='pt')
         subject_model = self.model.encoder
@@ -103,4 +116,4 @@ class DialoguePrediction:
 
 if __name__ == '__main__':
     dia = DialoguePrediction()
-    print(dia("我们下午去新东源吧"))
+    print(dia("我们下午两点去新东源吧"))

@@ -6,13 +6,16 @@ from model import Bert_CRF
 
 
 class InstructionPrediction:
+    """
+    指令解析工具
+    """
     def __init__(self):
         self.device = torch.device('cpu')
-        self.model: Bert_CRF = torch.load('NlpToolKit/Chinese/model/Instruction_model.bin',
+        self.model: Bert_CRF = torch.load(r'NlpToolKit/Chinese/model/Instruction_model.bin',
                                           map_location='cpu')
         self.model.eval()
-        self._tokenizer = BertTokenizer.from_pretrained('NlpToolKit/Chinese/model/bert/chinese-roberta-wwm-ext')
-        with open('NlpToolKit/Chinese/model/LabelAndIdx.json', encoding='utf-8') as file:
+        self._tokenizer = BertTokenizer.from_pretrained(r'NlpToolKit/Chinese/model/bert/chinese-roberta-wwm-ext')
+        with open(r'NlpToolKit/Chinese/model/LabelAndIdx.json', encoding='utf-8') as file:
             labelAndIdx = json.load(file)
         self.label2idx, self.idx2label = labelAndIdx["label2idx"], labelAndIdx["idx2label"]
 

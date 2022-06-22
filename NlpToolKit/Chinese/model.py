@@ -9,7 +9,7 @@ class Bert_CRF(nn.Module):
     def __init__(self, label_size):
         super().__init__()
         self.label_size = label_size
-        self.bert: BertModel = BertModel.from_pretrained('bert/chinese-roberta-wwm-ext')
+        self.bert: BertModel = BertModel.from_pretrained(r'bert/chinese-roberta-wwm-ext')
         self.dropout = nn.Dropout(p=0.1)
         self.linear = nn.Linear(768, self.label_size)
         self.crf = CRF(self.label_size, batch_first=True)

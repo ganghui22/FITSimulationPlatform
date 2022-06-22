@@ -23,7 +23,7 @@ class QNChatMessage(QWidget):
         self.setFont(te_font)
         self.setFont(te_font)
 
-        self.m_leftPixmap = QPixmap("ProfilePicture/WenDong.jpeg")
+        self.m_leftPixmap = QPixmap("ProfilePicture/ChenJun.jpeg")
         self.m_rightPixmap = QPixmap("ProfilePicture/robot.jpeg")
         self.m_loadingMovie = QMovie(self)
         self.m_loadingMovie.setFileName("./img/loading4.gif")

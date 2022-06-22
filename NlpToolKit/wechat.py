@@ -116,7 +116,7 @@ class WechatServer:
         @self.sio.on('OnWeChatEvents')
         def OnWeChatEvents(message):
             """
-
+            事件触发
             :param message:
             :return: None
             """
@@ -166,7 +166,7 @@ class WechatServer:
 
     def SayImage(self, to_user_name: str, base64_image: str) -> None:
         """
-
+        发送图片
         :param to_user_name:
         :param base64_image:
         :return:

@@ -1,3 +1,5 @@
+import json
+
 import cv2
 import time
 import random
@@ -16,57 +18,19 @@ import re
 from PathPlanningAstar.util_llj.AStar import *
 from update_time_space_graph import deal
 
-location_list = {
-    '休息室': [-19.7, 3.7],
-    '2号会议室': [-16.4, 4.1],
-    '讨论区': [-6.2, 2.3],
-    '1号会议室': [5.8, -2.3],
-    'Room510': [22.8, 4.1],
-    'Room511': [22.7, -4.2],
-    'Room512': [17.5, 4.2],
-    'Room513': [19.6, -4.2],
-    'Room514': [15, -4.3],
-    'Room515': [11.2, 2.4],
-    'Room516': [5.8, -2.3],
-}
-Person = {
-    "港晖": {
-        "name": "GangHui",
-        "position": [74.90, 10.18],
-        "head": "GangHui.jpeg"
-    },
-    "兰军": {
-        "name": "LanJun",
-        "position": [10.10, -3.37],
-        "head": "LanJun.jpeg"
-    },
-    "文栋": {
-        "name": "WenDong",
-        "position": [81.05, 13.98],
-        "head": "WenDong.jpeg"
-    },
-    "刘老师": {
-        "name": "Mr.Liu",
-        "position": [69.55, -69.32],
-        "head": "Mr.Liu.jpeg"
-    },
-    "晨峻": {
-        "name": "ChenJun",
-        "position": []
-    }
-}
-actions_lu = {
-    "bring": ["bring", "fetch", "take", "deliver", "offer", "get", "obtain", "send", "mail", "offer"],
-    "go": ["go", "come"]
-}
-persons = ["Ganghui", "LanJun", "ChenJun", "WeiHua", "Mr.Liu", "Mr.Yuan", "LiuYi", "YaoFeng", "HouXuan",
-           "XiaoFei", "HaoWei", "HaiYang", "ChunQiu", "JingYu", "XingHang", "WenDong", "QingZhu", "Ms.Li"]
-
 
 class MainWindow(QMainWindow, Ui_MainWindow):
-    def __init__(self, parent=None):
+    def __init__(self, dialogue_list: list = None, parent=None):
         super(MainWindow, self).__init__(parent)
         self.setupUi(self)
+
+        # 加载地点列表
+        with open('data/Location_list.json', 'r', encoding='utf-8') as f:
+            self._location_list = json.load(f)
+
+        # 加载人物列表
+        with open('data/Person.json', 'r', encoding='utf-8') as f:
+            self._Person = json.load(f)
 
         # 一些槽函数的连接
         self.Send_Button.clicked.connect(self.sendButtonFuction)
@@ -87,8 +51,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.__pointNumber = 0
 
         # 导入自然语言处理工具
-        self._dialog_deal = DialoguePrediction() # 对话分析工具
-        self._instruction_deal = InstructionPrediction() # 指令处理工具
+        self._dialog_deal = DialoguePrediction()  # 对话分析工具
+        self._instruction_deal = InstructionPrediction()  # 指令处理工具
 
         # 初始化动态时空图谱
         self._tp_graph = deal()
@@ -106,7 +70,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.__show_pic(self.Im)
 
         # 初始化当前用户
-        self.CurrentUser = Person['WenDong']
+        self.CurrentUser = self._Person['晨峻']
         self.__RobotHead = "robot.jpeg"
         self.userhead.setPixmap(QPixmap("ProfilePicture/" + self.CurrentUser['head']))
 
@@ -115,9 +79,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.__moveTimer.timeout.connect(self.__moveScanf)
         self.__moveSpeed = 5
         self.__moveTimer.start(self.__moveSpeed)
+        if dialogue_list is not None:
+            self._dialogue_list_deal(dialogue_list)
 
-    def __dealMessage(self, messageW: QNChatMessage, item: QListWidgetItem,
-                      text: str, name: str, time: int, usertype: QNChatMessage.User_Type):
+    def _dialogue_list_deal(self, dialogue_list):
+        for dialogue in dialogue_list:
+            time.sleep(5)
+
+    def __dealMessageShow(self, messageW: QNChatMessage, item: QListWidgetItem,
+                          text: str, name: str, time: int, usertype: QNChatMessage.User_Type):
         """
         处理消息气泡显示效果的函数
         """
@@ -150,6 +120,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.listWidget.setItemWidget(itemTime, messageTime)
 
     def __show_pic(self, cv2image) -> None:
+        """
+        私有化函数，进行地图图片的刷新
+        """
         cv2image = cv2.resize(cv2image, (2300, 2000), interpolation=cv2.INTER_CUBIC)
         showImage = QImage(cv2image.data, cv2image.shape[1], cv2image.shape[0], QImage.Format_RGB888)
         self.map.setPixmap(QPixmap.fromImage(showImage))
@@ -166,7 +139,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         messageW = QNChatMessage(self.listWidget.parentWidget())
         messageW.setPixUser("ProfilePicture/" + self.CurrentUser['head'])
         item = QListWidgetItem(self.listWidget)
-        self.__dealMessage(messageW, item, message, self.CurrentUser['name'], t, QNChatMessage.User_Type.User_She)
+        self.__dealMessageShow(messageW, item, message, self.CurrentUser['name'], t, QNChatMessage.User_Type.User_She)
         self.listWidget.setCurrentRow(self.listWidget.count() - 1)
 
     def RobotTalk(self, message: str) -> None:
@@ -180,7 +153,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.__dealMessageTime(t)
         messageW = QNChatMessage(self.listWidget.parentWidget())
         item = QListWidgetItem(self.listWidget)
-        self.__dealMessage(messageW, item, message, "Robot", t, QNChatMessage.User_Type.User_Me)
+        self.__dealMessageShow(messageW, item, message, "Robot", t, QNChatMessage.User_Type.User_Me)
         self.listWidget.setCurrentRow(self.listWidget.count() - 1)
 
     def logInfo(self, logText: str):
@@ -216,13 +189,29 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                    time.strftime("%Y-%m-%d %H:%M:%S") + ":</font>\n" +
                                    logText + "\n")
 
-    def __userChanged(self):
-        currentUser = self.UserComboBox.currentText()
-        for key in Person:
-            if currentUser == key:
-                self.CurrentUser = Person[key]
-                break
-        self.userhead.setPixmap(QPixmap("ProfilePicture/" + self.CurrentUser['head']))
+    def __userChanged(self, signal, user: str = None):
+        print(1)
+        print(user)
+        if user is None:
+            currentUser = self.UserComboBox.currentText()
+            print(2)
+            for key in self._Person:
+                if currentUser == key:
+                    self.CurrentUser = self._Person[key]
+                    break
+            print(self.CurrentUser)
+            self.userhead.setPixmap(QPixmap("ProfilePicture/" + self.CurrentUser['head']))
+        else:
+            self.CurrentUser = user
+            self.UserComboBox.setCurrentText(user)
+            for key in self._Person:
+                if user == key:
+                    self.CurrentUser = self._Person[key]
+                    break
+            if "head" in self.CurrentUser:
+                self.userhead.setPixmap(QPixmap("ProfilePicture/" + self.CurrentUser['head']))
+            else:
+                self.userhead.setPixmap(QPixmap("ProfilePicture/" + "Unk.png"))
 
     def __clearTrackFunction(self):
         """
@@ -244,18 +233,26 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 self.dealMessage(sendText, self.CurrentUser)
 
     def dealMessage(self, sentence: str, current_user: str):
-
+        """
+        消息处理函数，主要对消息进行一些简单的处理
+        """
         if sentence == "":
             return
         else:
             if '@ Robot' not in sentence:
-                 # 提取时间、地点、人物三元组并更新动态时空图谱
+                # 提取时间、地点、人物三元组并更新动态时空图谱
+                speak_person = sentence.split(":")[0]
+                self.__userChanged()
                 self._tp_graph.dynamic_space_time_graph(sentence)
             else:
                 # 指令处理
+                sentence = sentence[sentence.index('@ Robot') + 7:]
                 self.dealInstruction(sentence)
 
     def dealInstruction(self, sentence):
+        """
+        指令处理，将指令解析成动作，并压入动作的序列
+        """
         frame = self._instruction_deal(sentence)
         path = []
         if 'bring' not in frame:
@@ -275,6 +272,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 path.append(bringFrame['goal'])
             elif 'goal' in frame:
                 path.append(bringFrame['goal'])
+        # 存在时
         else:
             if 'goal' in frame and 'source' not in frame:
                 path.append(bringFrame['goal'])
@@ -282,10 +280,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 path.append(bringFrame['source'])
         if path is not None:
             for loc in path:
-                if loc in location_list:
+                if loc in self._location_list:
                     pass
+                else:
+                    return
+        # 都路径地点都能找到时,将地点按顺序导入动作序列
 
-    def addMoveSequence(self, Sequence: [int, [int, int], str]):
+        [self.addMoveSequence(p) for p in path]
+
+    def addMoveSequence(self, sequence: [int, [int, int], str]):
         """
         添加动作序列，传入动作序列Sequence，Sequence格式为[waitTime,
         [goalX, goalY]], waitTime表示机器人在执行动作序列之前要等待的时间
@@ -294,7 +297,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         :param Sequence: 动作序列
         :return: None
         """
-        self.__moveSequence.append(Sequence)
+        self.__moveSequence.append(sequence)
 
     def StartActionSequence(self):
         """
@@ -360,6 +363,19 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
 
 def main():
+    dialogue_list = ['刘老师:大家上午8点15分到1号会议室开会',
+                     '兰军:收到',
+                     '港晖:老师，我8点15分要去1001教室上课，能不能换个时间？',
+                     '刘老师:那我们就换到9点吧',
+                     '晨峻:收到',
+                     '港晖:收到',
+                     '伟华:收到',
+                     '姚峰:收到',
+                     '港晖:收到',
+                     '小飞:收到',
+                     '郝伟:收到',
+                     '文栋:收到',
+                     ]
     app = QApplication(sys.argv)
     window = MainWindow()
     window.show()
