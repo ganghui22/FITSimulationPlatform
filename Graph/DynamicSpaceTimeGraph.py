@@ -332,8 +332,6 @@ class update():
                     self.graph_rel[info[0]]['rel_now'] = None
                     del m[k]
                     info_detail = '{} come back to office!!!'.format(info[0])
-                # print(info_detail,tmp_possibillity)
-                # cv2.putText(img, info_detail, (600, 90), cv2.FONT_HERSHEY_COMPLEX, 1.0,(255,255,0),2)
             self.need_update = m
             # print(self.graph_rel)
             self.a.draw(self.graph_rel)
@@ -342,9 +340,9 @@ class update():
             #             2)
             # cv2.imshow('graph', img)
             self.now_time += 60
-        # if cv2.waitKey(1) & 0xFF == ord('q'):
-        # 	break
-        # return
+            # if cv2.waitKey(1) & 0xFF == ord('q'):
+            # 	break
+
 
 
 def cal_time(a, total_time, u, sigma, t_th):

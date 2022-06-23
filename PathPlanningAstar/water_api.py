@@ -85,7 +85,41 @@ def map_dealing(map_path: str) -> None:
     map_name = map_path.split('.')
     cv2.imwrite(map_name[0] + 'Dealing' + '.png', map_connectedcomponents)
 
-
+def map_track_middle(map_path: str) -> None:
+    map_origin = cv2.imread(map_path, cv2.IMREAD_GRAYSCALE)
+    width, high = np.shape(map_origin)
+    for x in range(width):
+        for y in range(high):
+            if 0 <= map_origin[x, y] <= 204:
+                map_origin[x, y] = 0
+            else:
+                map_origin[x, y] = 255
+    num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(map_origin, connectivity=4)
+    area = stats[:, 4:5]  # area
+    max1 = np.sort(area, axis=0)[-1]  # first area label
+    max_index = area.tolist().index(max1)
+    max2 = np.sort(area, axis=0)[-2]  # second area label
+    max2_index = area.tolist().index(max2)
+    map_connectedcomponents = map_origin
+    for x in range(width):
+        for y in range(high):
+            if labels[x, y] == max2_index:
+                map_connectedcomponents[x, y] = 255
+            else:
+                map_connectedcomponents[x, y] = 0
+    for x in range(width):
+        for y in range(high):
+            if map_origin[x, y] == 0:
+                map_connectedcomponents[x, y] = 0
+    map_binary = np.array(map_connectedcomponents)
+    for x in range(width):
+        for y in range(high):
+            if map_binary[x, y] == 0:
+                map_binary[x, y] = 0
+    contours, hierarchy = cv2.findContours(map_binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    cv2.drawContours(map_connectedcomponents, contours, -1, 0, 1)
+    map_name = map_path.split('.')
+    cv2.imwrite('middle' + '.png', map_connectedcomponents)
 # 类定义
 class WaterApi:
     def __init__(self, host: str, port: int) -> None:
@@ -365,6 +399,7 @@ def huatu(curr, origin_x, origin_y, height, width, resolution):
 
 if __name__ == "__main__":
     map_dealing('/home/llj/PathPlanningAstar/fit4_5.png')
+    map_track_middle('/home/llj/PathPlanningAstar/fit4_5.png')
     # main()
     api = WaterApi("192.168.10.10", 31001)
     # print(api.get_map_info())
