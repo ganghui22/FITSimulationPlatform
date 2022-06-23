@@ -21,12 +21,14 @@ class deal():
         self.if_need_change = 0
 
     def person_get_location(self, person_name):
-        person_messege = self.update_graph.graph_rel[person_name]
-        print(person_messege)
-        if person_messege['rel_now'] != None:
-            return person_messege['rel_now'][1]
+        if person_name in self.update_graph.graph_rel:
+            person_message = self.update_graph.graph_rel[person_name]
+            if person_message['rel_now'] != None:
+                return person_message['rel_now'][1]
+            else:
+                return person_message['rel_base'][1]
         else:
-            return person_messege['rel_base'][1]
+            return None
 
 
 if __name__ == '__main__':

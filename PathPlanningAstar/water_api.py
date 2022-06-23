@@ -17,9 +17,7 @@ def edge_node(all_nav_nodes, grid_size):
         if edge0 not in all_nav_nodes or edge1 not in all_nav_nodes or edge2 not in all_nav_nodes or edge3 not in all_nav_nodes:
             edge_nodes.append(node)
 
-    print(len(edge_nodes))
     nav_nodes = [iteam for iteam in all_nav_nodes if iteam not in edge_nodes]
-    print(len(nav_nodes))
 
     return edge_nodes, nav_nodes
 
@@ -368,7 +366,7 @@ def huatu(curr, origin_x, origin_y, height, width, resolution):
 if __name__ == "__main__":
     map_dealing('/home/llj/PathPlanningAstar/fit4_5.png')
     # main()
-    # api = WaterApi("192.168.10.10", 31001)
+    api = WaterApi("192.168.10.10", 31001)
     # print(api.get_map_info())
 
     # while 1:

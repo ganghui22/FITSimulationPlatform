@@ -1,9 +1,12 @@
 import json
+import multiprocessing
+import threading
 
 import cv2
 import time
 import random
-from PyQt5.QtCore import QTimer, QSize, QDateTime, QThread
+from multiprocessing import Process, Queue
+from PyQt5.QtCore import QTimer, QSize, QDateTime, QThread, pyqtSignal
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from QtCustomComponents.MainWindow import Ui_MainWindow
@@ -18,9 +21,13 @@ import re
 from PathPlanningAstar.util_llj.AStar import *
 from update_time_space_graph import deal
 
+class Worker(QThread):
+    sinOut = pyqtSignal()
 
 class MainWindow(QMainWindow, Ui_MainWindow):
-    def __init__(self, dialogue_list: list = None, parent=None):
+    def __init__(self, InstructionPrediction_InQueue: multiprocessing.Queue, InstructionPrediction_OutQueue: multiprocessing.Queue,
+                 TimeSpaceGraph_InQueue: multiprocessing.Queue, TimeSpaceGraph_OutQueue: multiprocessing.Queue, dialogue_list: list = None,
+                 parent=None):
         super(MainWindow, self).__init__(parent)
         self.setupUi(self)
 
@@ -51,11 +58,16 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.__pointNumber = 0
 
         # 导入自然语言处理工具
-        self._dialog_deal = DialoguePrediction()  # 对话分析工具
-        self._instruction_deal = InstructionPrediction()  # 指令处理工具
+        # 创建对话分析工具Queue队列
+        self._InstructionPrediction_InQueue = InstructionPrediction_InQueue
+        self._InstructionPrediction_OutQueue = InstructionPrediction_OutQueue
+
+        # self._instruction_deal = InstructionPrediction()  # 指令处理工具
 
         # 初始化动态时空图谱
-        self._tp_graph = deal()
+        # 创建动态时空图谱进程的Queue队列
+        self._TimeSpaceGraph_InQueue = TimeSpaceGraph_InQueue
+        self._TimeSpaceGraph_OutQueue = TimeSpaceGraph_OutQueue
 
         # 读入地图
         self.Im = cv2.imread('PathPlanningAstar/fit4_5Dealing.png')
@@ -79,12 +91,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.__moveTimer.timeout.connect(self.__moveScanf)
         self.__moveSpeed = 5
         self.__moveTimer.start(self.__moveSpeed)
-        if dialogue_list is not None:
-            self._dialogue_list_deal(dialogue_list)
 
-    def _dialogue_list_deal(self, dialogue_list):
-        for dialogue in dialogue_list:
-            time.sleep(5)
+        # 列表扫描服务
+        if dialogue_list is not None:
+            self.dialogue_list = dialogue_list
+            self.dialogue_list_deal_timer = QTimer(self)
+            self.dialogue_list_deal_timer.timeout.connect(self._dialogue_list_deal)
+            self.dialogue_list_deal_timer.start(2000)
+
+    def _dialogue_list_deal(self):
+        if self.dialogue_list is not None:
+            dialogue = self.dialogue_list.pop(0)
+            self.dealMessage(dialogue)
+        else:
+            self.dialogue_list_deal_timer.stop()
+
 
     def __dealMessageShow(self, messageW: QNChatMessage, item: QListWidgetItem,
                           text: str, name: str, time: int, usertype: QNChatMessage.User_Type):
@@ -137,7 +158,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         t = QDateTime.currentDateTime().toTime_t()
         self.__dealMessageTime(t)
         messageW = QNChatMessage(self.listWidget.parentWidget())
-        messageW.setPixUser("ProfilePicture/" + self.CurrentUser['head'])
+        userHead = ""
+
+        if 'head' in self.CurrentUser:
+            userHead = "ProfilePicture/" + self.CurrentUser['head']
+        else:
+            userHead = "ProfilePicture/Unk.jpeg"
+        messageW.setPixUser(userHead)
         item = QListWidgetItem(self.listWidget)
         self.__dealMessageShow(messageW, item, message, self.CurrentUser['name'], t, QNChatMessage.User_Type.User_She)
         self.listWidget.setCurrentRow(self.listWidget.count() - 1)
@@ -164,7 +191,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                    "display:inline-block;background:#28FF28;border:2px "
                                    "solid;color:#000;text-align:left;}</style>" +
                                    "<font class='background'><span>[Info]</span></font>" + "<font color='blue'>" +
-                                   time.strftime("%Y-%m-%d %H:%M:%S") + ":</font>\n" +
+                                   str(time.strftime("%Y-%m-%d %H:%M:%S")) + ":</font>\n" +
                                    logText + "\n")
 
     def logWarn(self, logText: str):
@@ -175,7 +202,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                    "display:inline-block;background:#FFD306;border:2px "
                                    "solid;color:#000;text-align:left;}</style>" +
                                    "<font background-color='yellow'>[Warn]</font>" + "<font color='blue'>" +
-                                   time.strftime("%Y-%m-%d %H:%M:%S") + ":</font>\n" +
+                                   str(time.strftime("%Y-%m-%d %H:%M:%S")) + ":</font>\n" +
                                    logText + "\n")
 
     def logError(self, logText: str):
@@ -186,32 +213,31 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                    "display:inline-block;background:#EA0000;border:2px "
                                    "solid;color:#000;text-align:left;}</style>" +
                                    "<font background-color='red'>[Error]</font>" + "<font color='blue'>" +
-                                   time.strftime("%Y-%m-%d %H:%M:%S") + ":</font>\n" +
+                                   str(time.strftime("%Y-%m-%d %H:%M:%S")) + ":</font>\n" +
                                    logText + "\n")
 
     def __userChanged(self, signal, user: str = None):
-        print(1)
-        print(user)
         if user is None:
             currentUser = self.UserComboBox.currentText()
-            print(2)
             for key in self._Person:
                 if currentUser == key:
-                    self.CurrentUser = self._Person[key]
-                    break
-            print(self.CurrentUser)
-            self.userhead.setPixmap(QPixmap("ProfilePicture/" + self.CurrentUser['head']))
-        else:
-            self.CurrentUser = user
-            self.UserComboBox.setCurrentText(user)
-            for key in self._Person:
-                if user == key:
                     self.CurrentUser = self._Person[key]
                     break
             if "head" in self.CurrentUser:
                 self.userhead.setPixmap(QPixmap("ProfilePicture/" + self.CurrentUser['head']))
             else:
-                self.userhead.setPixmap(QPixmap("ProfilePicture/" + "Unk.png"))
+                self.userhead.setPixmap(QPixmap("ProfilePicture/" + "Unk.jpeg"))
+        else:
+            self.CurrentUser = user
+            self.UserComboBox.setCurrentText(user['name'])
+            for key in self._Person:
+                if user['name'] == key:
+                    self.CurrentUser = self._Person[key]
+                    break
+            if "head" in self.CurrentUser:
+                self.userhead.setPixmap(QPixmap("ProfilePicture/" + self.CurrentUser['head']))
+            else:
+                self.userhead.setPixmap(QPixmap("ProfilePicture/Unk.jpeg"))
 
     def __clearTrackFunction(self):
         """
@@ -221,39 +247,52 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         cv2.circle(self.Im, (self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1]), 10, (0, 0, 255), -1)
         self.__show_pic(self.Im)
 
+
+
     def sendButtonFuction(self):
         """
         用户消息发送按钮点击事件
         """
-        sendText = self.chat_text.toPlainText()
-        if sendText != '':
-            self.chat_text.setText("")
-            self.UserTalk(sendText)
-            if self.CurrentUser != "Robot":
-                self.dealMessage(sendText, self.CurrentUser)
 
-    def dealMessage(self, sentence: str, current_user: str):
+        sendText = self.chat_text.toPlainText()
+        self.chat_text.setText("")
+        if sendText != '':
+            self.UserTalk(sendText)
+            if self.CurrentUser['name'] != "Robot":
+                t = self.CurrentUser['name'] + ":" + sendText
+                self.dealMessage(t)
+
+    def dealMessage(self, sentence: str):
         """
         消息处理函数，主要对消息进行一些简单的处理
         """
         if sentence == "":
             return
         else:
+            speak_person = sentence.split(":")[0]
+            speak_person = self._Person[speak_person]
+            self.__userChanged(None, speak_person)
+            t = sentence.split(":")[1]
+            self.UserTalk(t)
             if '@ Robot' not in sentence:
                 # 提取时间、地点、人物三元组并更新动态时空图谱
-                speak_person = sentence.split(":")[0]
-                self.__userChanged()
-                self._tp_graph.dynamic_space_time_graph(sentence)
+                self._TimeSpaceGraph_InQueue.put([True, sentence])
             else:
                 # 指令处理
                 sentence = sentence[sentence.index('@ Robot') + 7:]
                 self.dealInstruction(sentence)
 
+    # def _personCheck(self, input_item):
+
     def dealInstruction(self, sentence):
         """
         指令处理，将指令解析成动作，并压入动作的序列
         """
-        frame = self._instruction_deal(sentence)
+        self._InstructionPrediction_InQueue.put(sentence)
+        while self._InstructionPrediction_OutQueue.empty():
+            pass
+        frame = self._InstructionPrediction_OutQueue.get()
+
         path = []
         if 'bring' not in frame:
             return
@@ -261,8 +300,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             fe = frame['bring'][frameElement]
             if len(fe) > 1:
                 frame['bring'][frameElement] = ''.join(fe)
+            else:
+                frame['bring'][frameElement] = frame['bring'][frameElement][0]
         bringFrame = frame['bring']
-
+        print(bringFrame)
         # 判断beneficiary是否存在
         # 不存在时
         if 'beneficiary' not in bringFrame:
@@ -276,17 +317,48 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         else:
             if 'goal' in frame and 'source' not in frame:
                 path.append(bringFrame['goal'])
-            elif 'goal' not in frame and 'source' in frame:
+            elif 'goal' in frame and 'source' in frame:
+                path.append(bringFrame['goal'])
                 path.append(bringFrame['source'])
         if path is not None:
             for loc in path:
-                if loc in self._location_list:
+                if loc in self._location_list or loc in self._Person:
                     pass
                 else:
                     return
-        # 都路径地点都能找到时,将地点按顺序导入动作序列
+        print(path)
+        path = self.listPersonOrLocation_diff(path)
+        path = [[p, 2000] for p in path]
+        # 路径地点都能找到时,将地点按顺序导入动作序列
+        self.logInfo(str(path))
 
-        [self.addMoveSequence(p) for p in path]
+    def listPersonOrLocation_diff(self, li):
+        for idx, item in enumerate(li):
+            # 带有固定位置的词出现时,代表固定地点
+            if "位置" in item or "工位" in item or "办公室":
+                for p in self._Person:
+                    if p in item:
+                        li[idx] = self._location_list[self._Person[p]['position']]
+                        break
+            else:
+                # 当路径是人物时，需要查询人物当前的位置
+                for p in self._Person:
+                    if p in item:
+                        print(p)
+                        self._TimeSpaceGraph_InQueue.put(p)
+                        while self._TimeSpaceGraph_OutQueue.empty():
+                            pass
+                        l = self._TimeSpaceGraph_OutQueue.get()
+                        li[idx] = self._location_list[l]
+                        self.logInfo("path append: " + l)
+                        break
+                # 当是地点时
+                for loc in self._location_list:
+                    if loc in item:
+                        li[idx] = self._location_list[loc]
+                        self.logInfo("path append: " + loc)
+                        break
+        return li
 
     def addMoveSequence(self, sequence: [int, [int, int], str]):
         """
@@ -362,23 +434,75 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         return pixle_point, point
 
 
+# def dialogue_list_deal(QThread):
+#     sinOut = pyqtSignal(str)
+#
+#     def __init__(self, parent=None):
+#         super(dialogue_list_deal, self).__init__(parent)
+#         # 设置工作状态与初始num数值
+#         self.working = True
+#         self.num = 0
+#
+#     def __del__(self):
+#         # 线程状态改变与线程终止
+#         self.working = False
+#         self.wait()
+#
+#     def run(self):
+#         while self.working:
+
+def TimeSpaceGraph_process(qi: multiprocessing.Queue, qo: multiprocessing.Queue):
+    tp_graph = deal()
+    while True:
+        if not qi.empty():
+            query = qi.get()
+
+            if query[0]:
+
+                tp_graph.dynamic_space_time_graph(query[1])
+            else:
+                reply = tp_graph.person_get_location(query[1])
+                qo.put(reply)
+
+
+def InstructionPrediction_process(qi: multiprocessing.Queue, qo: multiprocessing.Queue):
+    deal_instruction = InstructionPrediction()
+    while True:
+        if not qi.empty():
+            query = qi.get()
+            reply = deal_instruction(query)
+            qo.put(reply)
+
+
 def main():
     dialogue_list = ['刘老师:大家上午8点15分到1号会议室开会',
                      '兰军:收到',
                      '港晖:老师，我8点15分要去1001教室上课，能不能换个时间？',
                      '刘老师:那我们就换到9点吧',
                      '晨峻:收到',
-                     '港晖:收到',
                      '伟华:收到',
                      '姚峰:收到',
                      '港晖:收到',
                      '小飞:收到',
-                     '郝伟:收到',
-                     '文栋:收到',
+                     '晨峻:@ Robot从港晖那拿份文件给兰军'
                      ]
+    TimeSpaceGraph_InQueue = multiprocessing.Queue()
+    TimeSpaceGraph_OutQueue = multiprocessing.Queue()
+    InstructionPrediction_InQueue = multiprocessing.Queue()
+    InstructionPrediction_OutQueue = multiprocessing.Queue()
+    _InstructionPrediction_process = Process(target=InstructionPrediction_process, args=(
+        InstructionPrediction_InQueue,
+        InstructionPrediction_OutQueue))
+    _InstructionPrediction_process.start()
+    _TimeSpaceGraph_process = Process(target=TimeSpaceGraph_process, args=(
+        TimeSpaceGraph_InQueue,
+        TimeSpaceGraph_OutQueue))
+    _TimeSpaceGraph_process.start()
     app = QApplication(sys.argv)
-    window = MainWindow()
+    window = MainWindow(InstructionPrediction_InQueue, InstructionPrediction_OutQueue,
+                        TimeSpaceGraph_InQueue, TimeSpaceGraph_OutQueue, dialogue_list=dialogue_list)
     window.show()
+
     sys.exit(app.exec_())
 
 
