@@ -41,11 +41,11 @@ class Map:
 
 def world_to_pixel(world_points):
     """接入自己的api"""
-    img_h = 2034
-    img_w = 2309
-    origin_x = -4
-    origin_y = -79.9708
-    resolution = 0.05
+    img_h = 533
+    img_w = 1883
+    origin_x = -26.0174
+    origin_y = -7.65079
+    resolution = 0.03
     pixel_points = []
     loc_x = world_points[0]
     loc_y = world_points[1]
@@ -69,9 +69,9 @@ def smooth_path2(path):
 
 
 if __name__ == '__main__':
-    from util_llj import Simulator_llj
-
-
+    # from util_llj import Simulator_llj
+    #
+    #
     def huatu(map_, path_):
         current_map = map_
         for k in path_:
@@ -82,12 +82,18 @@ if __name__ == '__main__':
             cv2.resizeWindow('findCorners', 700, 900)  # 自己设定窗口图片的大小
             cv2.imshow("findCorners", current_map)
             cv2.waitKey(1)
-        cv2.imwrite('/home/llj/PathPlanningAstar/result.png', current_map)
+        cv2.imwrite('result.png', current_map)
         return current_map
-
-
-    path_search = Simulator_llj.search(start=(1700, 155), goal=(1470, 1821))
-    path = path_search.make_path()
-    path = smooth_path2(path)
-    map = cv2.imread('./PathPlanningAstar/fit4_5Dealing_draw.png')
-    huatu(map, path)
+    #
+    #
+    # path_search = Simulator_llj.search(start=(467, 244), goal=(1450, 137))
+    # path = path_search.make_path()
+    # path = smooth_path2(path)
+    # map = cv2.imread('./map.png')
+    # huatu(map, path)
+    from Simulator_llj import search
+    Im = cv2.imread('map.png')
+    path_map = Map("middle.png")
+    search = search(map=path_map)
+    path = search.make_path((467, 244), (1450, 137))
+    huatu(Im, path)

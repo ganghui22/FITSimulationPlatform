@@ -21,12 +21,18 @@ import re
 from PathPlanningAstar.util_llj.AStar import *
 from update_time_space_graph import deal
 
+
 class Worker(QThread):
     sinOut = pyqtSignal()
 
+
 class MainWindow(QMainWindow, Ui_MainWindow):
-    def __init__(self, InstructionPrediction_InQueue: multiprocessing.Queue, InstructionPrediction_OutQueue: multiprocessing.Queue,
-                 TimeSpaceGraph_InQueue: multiprocessing.Queue, TimeSpaceGraph_OutQueue: multiprocessing.Queue, dialogue_list: list = None,
+    def __init__(self, InstructionPrediction_InQueue: multiprocessing.Queue,
+                 InstructionPrediction_OutQueue: multiprocessing.Queue,
+                 TimeSpaceGraph_InQueue: multiprocessing.Queue, TimeSpaceGraph_OutQueue: multiprocessing.Queue,
+                 PathPlanningProcess_InQueue: multiprocessing.Queue,
+                 PathPlanningProcess_OutQueue: multiprocessing.Queue,
+                 dialogue_list: list = None,
                  parent=None):
         super(MainWindow, self).__init__(parent)
         self.setupUi(self)
@@ -70,11 +76,14 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self._TimeSpaceGraph_OutQueue = TimeSpaceGraph_OutQueue
 
         # 读入地图
-        self.Im = cv2.imread('PathPlanningAstar/fit4_5Dealing.png')
+        self.Im = cv2.imread('PathPlanningAstar/map.png')
         self.__path_map = Map("PathPlanningAstar/middle.png")
 
         # 初始化路径规划模块
+        # 创建路径规划进程的Queue队列
         self.__search = search(map=self.__path_map)
+        self.PathPlanningProcess_InQueue = PathPlanningProcess_InQueue
+        self.PathPlanningProcess_OutQueue = PathPlanningProcess_OutQueue
 
         # 生成机器人随机位置
         self.RobotCurrentPoint_pix, self.RobotCurrentPoint = self.__getRandomAgentLocation()
@@ -89,7 +98,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # 初始化动作扫描服务
         self.__moveTimer = QTimer(self)
         self.__moveTimer.timeout.connect(self.__moveScanf)
-        self.__moveSpeed = 5
+        self.__moveSpeed = 100
+        self.__waitForPathPlanning = False
         self.__moveTimer.start(self.__moveSpeed)
 
         # 列表扫描服务
@@ -100,12 +110,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dialogue_list_deal_timer.start(2000)
 
     def _dialogue_list_deal(self):
-        if self.dialogue_list is not None:
+        if self.dialogue_list:
             dialogue = self.dialogue_list.pop(0)
             self.dealMessage(dialogue)
         else:
             self.dialogue_list_deal_timer.stop()
-
 
     def __dealMessageShow(self, messageW: QNChatMessage, item: QListWidgetItem,
                           text: str, name: str, time: int, usertype: QNChatMessage.User_Type):
@@ -144,8 +153,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         私有化函数，进行地图图片的刷新
         """
-        cv2image = cv2.resize(cv2image, (2300, 2000), interpolation=cv2.INTER_CUBIC)
-        showImage = QImage(cv2image.data, cv2image.shape[1], cv2image.shape[0], QImage.Format_RGB888)
+        cv2image = cv2.resize(cv2image, (int(cv2image.shape[1] / 4) * 4, int(cv2image.shape[0] / 4) * 4), interpolation=cv2.INTER_CUBIC)
+        showImage = QImage(cv2image.data, cv2image.shape[1], cv2image.shape[0], cv2image.shape[1] * 3, QImage.Format.Format_RGB888)
         self.map.setPixmap(QPixmap.fromImage(showImage))
 
     def UserTalk(self, message: str) -> None:
@@ -243,11 +252,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         清除轨迹
         """
-        self.Im = cv2.imread('PathPlanningAstar/fit4_5Dealing.png')
+        self.Im = cv2.imread('PathPlanningAstar/map.png')
         cv2.circle(self.Im, (self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1]), 10, (0, 0, 255), -1)
         self.__show_pic(self.Im)
-
-
 
     def sendButtonFuction(self):
         """
@@ -303,36 +310,32 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             else:
                 frame['bring'][frameElement] = frame['bring'][frameElement][0]
         bringFrame = frame['bring']
-        print(bringFrame)
         # 判断beneficiary是否存在
         # 不存在时
         if 'beneficiary' not in bringFrame:
             # 判断source 和 goal是同时存在
-            if 'source' in frame and 'goal' in frame:
+            if ('source' in bringFrame) and ('goal' in bringFrame):
                 path.append(bringFrame['source'])
                 path.append(bringFrame['goal'])
-            elif 'goal' in frame:
+            elif ('goal' in bringFrame) and ('source' not in bringFrame):
                 path.append(bringFrame['goal'])
         # 存在时
         else:
-            if 'goal' in frame and 'source' not in frame:
+            if 'goal' in bringFrame and 'source' not in bringFrame:
                 path.append(bringFrame['goal'])
-            elif 'goal' in frame and 'source' in frame:
+            elif 'goal' in bringFrame and 'source' in bringFrame:
                 path.append(bringFrame['goal'])
                 path.append(bringFrame['source'])
-        if path is not None:
-            for loc in path:
-                if loc in self._location_list or loc in self._Person:
-                    pass
-                else:
-                    return
-        print(path)
-        path = self.listPersonOrLocation_diff(path)
-        path = [[p, 2000] for p in path]
+
+        path_l = self.listPersonOrLocation_diff(path)
+        path = [[2000, p, path[i]] for i, p in enumerate(path_l)]
+        for p in path:
+            self.addMoveSequence(p)
         # 路径地点都能找到时,将地点按顺序导入动作序列
         self.logInfo(str(path))
 
-    def listPersonOrLocation_diff(self, li):
+    def listPersonOrLocation_diff(self, lii):
+        li = lii[:]
         for idx, item in enumerate(li):
             # 带有固定位置的词出现时,代表固定地点
             if "位置" in item or "工位" in item or "办公室":
@@ -344,7 +347,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 # 当路径是人物时，需要查询人物当前的位置
                 for p in self._Person:
                     if p in item:
-                        print(p)
                         self._TimeSpaceGraph_InQueue.put(p)
                         while self._TimeSpaceGraph_OutQueue.empty():
                             pass
@@ -389,26 +391,34 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         if self.__currentMovePath:  # 当路径序列不为空时执行当前路径
             self.RobotCurrentPoint_pix = self.__currentMovePath.pop(0)  # 读出路径序列第一个元素
+            print(self.RobotCurrentPoint_pix)
             self.RobotCurrentPoint_pix = [self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1]]  # 更新当前位置
             cv2.circle(self.Im, (self.RobotCurrentPoint_pix[0],  # 画点
                                  self.RobotCurrentPoint_pix[1]), 2, (0, 0, 213), -1)
             self.__show_pic(self.Im)  # 刷新显示
-        else:  # 当路径列表读空之后，扫描动作序列
-            if self.__moveSequence:  # 当动作序列不为空时
-                self.__moveTimer.stop()  # 先暂停扫描函数的触发
-                waitTime, [goalX, goalY], name = self.__moveSequence.pop(0)  # 读出动作序列第一个元素
-                self.__currentMovePath = self.__search.make_path(  # 路径规划，并把路径加入路径序列
-                    start=(self.RobotCurrentPoint_pix[0],
-                           self.RobotCurrentPoint_pix[1]),
-                    goal=(goalX, goalY))
+        elif self.__waitForPathPlanning:
+            if not self.PathPlanningProcess_OutQueue.empty():
+                self.__currentMovePath = self.PathPlanningProcess_OutQueue.get()
                 self.__clearTrackFunction()
-                QThread.msleep(waitTime)  # 等待时间
-                self.logInfo("Current goal: " + name)
+                # QThread.msleep(waitTime)  # 等待时间
                 self.RobotTargetPoint_pix = [self.__currentMovePath[-1][0], self.__currentMovePath[-1][1]]  # 更新当前目标点
                 cv2.circle(self.Im, (self.RobotTargetPoint_pix[0], self.RobotTargetPoint_pix[1]),  # 在地图上标出目标点
                            10, (255, 0, 0), -1)
                 self.__show_pic(self.Im)  # 刷新显示
-                self.__moveTimer.start(self.__moveSpeed)  # 重启扫描
+                self.__waitForPathPlanning = False
+        else:  # 当路径列表读空之后，扫描动作序列
+            if self.__moveSequence:  # 当动作序列不为空时
+                # self.__moveTimer.stop()  # 先暂停扫描函数的触发
+                # print("MoveSequence pop")
+                waitTime, [goalX, goalY], name = self.__moveSequence.pop(0)  # 读出动作序列第一个元素
+                goalX, goalY = world_to_pixel((goalX, goalY))
+                self.PathPlanningProcess_InQueue.put([self.RobotCurrentPoint_pix[0],
+                                                     self.RobotCurrentPoint_pix[1],
+                                                     goalX,
+                                                     goalY])
+                self.logInfo("Current goal: " + name)
+                self.__waitForPathPlanning = True
+                # self.__moveTimer.start(self.__moveSpeed)  # 重启扫描
 
     def __getRandomAgentLocation(self) -> [[int, int], [int, int]]:
         """
@@ -420,7 +430,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         while True:
             point = (random.choice(range(-80, 80)), random.choice(range(-80, 80)))
             pixle_point = world_to_pixel(world_points=point)
-            if 0 <= pixle_point[0] < 2309 and 0 <= pixle_point[1] < 2034:
+            if 0 <= pixle_point[0] < 1883 and 0 <= pixle_point[1] < 533:
                 false_flag = False
                 for i in range(-2, 2, 2):
                     for j in range(-2, 2, 2):
@@ -451,14 +461,22 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 #     def run(self):
 #         while self.working:
 
+def PathPlanningProcess(qi: multiprocessing.Queue, qo:multiprocessing.Queue):
+    path_map = Map("PathPlanningAstar/middle.png")
+    s = search(map=path_map)
+    while True:
+        if not qi.empty():
+            start_x, start_y, goal_x, goal_y = qi.get()
+            path = s.make_path((start_x, start_y), (goal_x, goal_y))
+            qo.put(path)
+
+
 def TimeSpaceGraph_process(qi: multiprocessing.Queue, qo: multiprocessing.Queue):
     tp_graph = deal()
     while True:
         if not qi.empty():
             query = qi.get()
-
             if query[0]:
-
                 tp_graph.dynamic_space_time_graph(query[1])
             else:
                 reply = tp_graph.person_get_location(query[1])
@@ -486,24 +504,45 @@ def main():
                      '小飞:收到',
                      '晨峻:@ Robot从港晖那拿份文件给兰军'
                      ]
-    TimeSpaceGraph_InQueue = multiprocessing.Queue()
-    TimeSpaceGraph_OutQueue = multiprocessing.Queue()
-    InstructionPrediction_InQueue = multiprocessing.Queue()
-    InstructionPrediction_OutQueue = multiprocessing.Queue()
+
+    # 指令解析服务的进程通信队列
+    InstructionPrediction_InQueue, InstructionPrediction_OutQueue = multiprocessing.Queue(), multiprocessing.Queue()
+
+    # 时空图谱服务的进程通信队列
+    TimeSpaceGraph_InQueue, TimeSpaceGraph_OutQueue = multiprocessing.Queue(), multiprocessing.Queue()
+
+    # 地图路径规划的进程通信队列
+    PathPlanningProcess_InQueue, PathPlanningProcess_OutQueue = multiprocessing.Queue(), multiprocessing.Queue()
+
+    # 指令解析服务的进程启动
     _InstructionPrediction_process = Process(target=InstructionPrediction_process, args=(
         InstructionPrediction_InQueue,
         InstructionPrediction_OutQueue))
     _InstructionPrediction_process.start()
+
+    # 时空图谱服务的进程启动
     _TimeSpaceGraph_process = Process(target=TimeSpaceGraph_process, args=(
         TimeSpaceGraph_InQueue,
         TimeSpaceGraph_OutQueue))
     _TimeSpaceGraph_process.start()
+
+    # 地图路径规划进程启动
+    _PathPlanning_process = Process(target=PathPlanningProcess, args=(
+        PathPlanningProcess_InQueue,
+        PathPlanningProcess_OutQueue))
+    _PathPlanning_process.start()
+
     app = QApplication(sys.argv)
-    window = MainWindow(InstructionPrediction_InQueue, InstructionPrediction_OutQueue,
-                        TimeSpaceGraph_InQueue, TimeSpaceGraph_OutQueue, dialogue_list=dialogue_list)
+    window = MainWindow(InstructionPrediction_InQueue,
+                        InstructionPrediction_OutQueue,
+                        TimeSpaceGraph_InQueue,
+                        TimeSpaceGraph_OutQueue,
+                        PathPlanningProcess_InQueue,
+                        PathPlanningProcess_OutQueue,
+                        dialogue_list=dialogue_list)
     window.show()
 
-    sys.exit(app.exec_())
+    sys.exit([app.exec_(), _TimeSpaceGraph_process.terminate(), _InstructionPrediction_process.terminate(), _PathPlanning_process.terminate()])
 
 
 if __name__ == '__main__':

@@ -64,7 +64,7 @@ class search():
 
 
 if __name__ == '__main__':
-    path_map = Map()
+    path_map = Map("./middle.png")
     a = search(map=path_map)
     print(a.make_path(start=(920, 1614), goal=(1700, 154)))
     # a=search(map=path_map)

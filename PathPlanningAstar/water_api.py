@@ -87,6 +87,8 @@ def map_dealing(map_path: str) -> None:
 
 def map_track_middle(map_path: str) -> None:
     map_origin = cv2.imread(map_path, cv2.IMREAD_GRAYSCALE)
+    print(map_origin)
+    print(np.shape(map_origin))
     width, high = np.shape(map_origin)
     for x in range(width):
         for y in range(high):
@@ -398,10 +400,10 @@ def huatu(curr, origin_x, origin_y, height, width, resolution):
 
 
 if __name__ == "__main__":
-    map_dealing('/home/llj/PathPlanningAstar/fit4_5.png')
-    map_track_middle('/home/llj/PathPlanningAstar/fit4_5.png')
+    # map_dealing('/home/llj/PathPlanningAstar/fit4_5.png')
+    map_track_middle('map.png')
     # main()
-    api = WaterApi("192.168.10.10", 31001)
+    # api = WaterApi("192.168.10.10", 31001)
     # print(api.get_map_info())
 
     # while 1:

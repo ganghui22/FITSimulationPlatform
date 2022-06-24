@@ -287,9 +287,9 @@ global flag
 
 
 def main():
-    # wxid_da6w4wq13q4n12 bot1
+    # wxid_6upszurr9wlv12 bot1
     # wxid_517djxubg7rz22 bot2
-    wechatserver = WechatServer('wxid_517djxubg7rz22', onmessage, onevent)
+    wechatserver = WechatServer('wxid_6upszurr9wlv12', onmessage, onevent)
 
 
 if __name__ == '__main__':
