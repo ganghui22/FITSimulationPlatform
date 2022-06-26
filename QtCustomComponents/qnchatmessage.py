@@ -23,10 +23,10 @@ class QNChatMessage(QWidget):
         self.setFont(te_font)
         self.setFont(te_font)
 
-        self.m_leftPixmap = QPixmap("ProfilePicture/ChenJun.jpeg")
-        self.m_rightPixmap = QPixmap("ProfilePicture/robot.jpeg")
+        self.m_leftPixmap = QPixmap()
+        self.m_rightPixmap = QPixmap()
         self.m_loadingMovie = QMovie(self)
-        self.m_loadingMovie.setFileName("./img/loading4.gif")
+        self.m_loadingMovie.setFileName("ProfilePicture/loading4.gif")
         self.m_loading = QLabel(self)
         self.m_loading.setMovie(self.m_loadingMovie)
         self.m_loading.resize(16, 16)
@@ -56,7 +56,7 @@ class QNChatMessage(QWidget):
         self.usrname = " "
 
     def setPixUser(self, ProfilePicturePath):
-        self.m_leftPixmap = QPixmap(ProfilePicturePath)
+        self.m_leftPixmap = QPixmap.fromImage(ProfilePicturePath)
 
     def setTextSuccess(self):
         self.m_loading.hide()
@@ -83,7 +83,6 @@ class QNChatMessage(QWidget):
     def fontRect(self, string: str, name: str):
         self.m_msg = string
         self.usrname = name
-        namewidth = self.getNameWidth()
         minHei = 60
         iconWH = 60
         iconSpaceW = 20

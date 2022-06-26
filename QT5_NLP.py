@@ -6,47 +6,90 @@ import cv2
 import time
 import random
 from multiprocessing import Process, Queue
-from PyQt5.QtCore import QTimer, QSize, QDateTime, QThread, pyqtSignal
+from PyQt5.QtCore import QTimer, QSize, QDateTime, Qt,QThread, pyqtSignal
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from QtCustomComponents.MainWindow import Ui_MainWindow
 from PathPlanningAstar.astar import world_to_pixel, Map
 from PathPlanningAstar.Simulator_llj import search
-from NlpToolKit.CoreNLP import CorenNLP
-from NlpToolKit.Chinese.DialoguePrediction import DialoguePrediction as DialoguePrediction
 from NlpToolKit.Chinese.InstructionPrediction import InstructionPrediction as InstructionPrediction
 from QtCustomComponents.qnchatmessage import QNChatMessage
-from transformers import pipeline
-import re
 from PathPlanningAstar.util_llj.AStar import *
 from update_time_space_graph import deal
-
-
-class Worker(QThread):
-    sinOut = pyqtSignal()
-
+import itertools
 
 class MainWindow(QMainWindow, Ui_MainWindow):
-    def __init__(self, InstructionPrediction_InQueue: multiprocessing.Queue,
+    def __init__(self,
+                 InstructionPrediction_InQueue: multiprocessing.Queue,
                  InstructionPrediction_OutQueue: multiprocessing.Queue,
-                 TimeSpaceGraph_InQueue: multiprocessing.Queue, TimeSpaceGraph_OutQueue: multiprocessing.Queue,
+                 TimeSpaceGraph_InQueue: multiprocessing.Queue,
+                 TimeSpaceGraph_OutQueue: multiprocessing.Queue,
                  PathPlanningProcess_InQueue: multiprocessing.Queue,
                  PathPlanningProcess_OutQueue: multiprocessing.Queue,
                  dialogue_list: list = None,
                  parent=None):
         super(MainWindow, self).__init__(parent)
+
         self.setupUi(self)
+
+        self.actionTag_location.triggered.connect(self._Tag_location)
+        # 读入地图
+        self.Im = cv2.imread('PathPlanningAstar/map.png')
+        self.__path_map = Map("PathPlanningAstar/middle.png")
+        self.statuLabel = QLabel()
+        self.statusbar.addWidget(self.statuLabel)
+        Im_W, Im_H, map_W, map_H = self.Im.shape[1], self.Im.shape[0], self.map.width(), self.map.height()
+        self.map.setGeometry(self.map.x(), self.map.y(), map_W, int(map_W * (Im_H / Im_W)))
+        self.map.setMouseTracking(True)
+        self.map.mouseMoveEvent = self.map_mouseMoveEvent
 
         # 加载地点列表
         with open('data/Location_list.json', 'r', encoding='utf-8') as f:
             self._location_list = json.load(f)
 
-        # 加载人物列表
+        # 生成不同颜色的未知头像
+        unk_head = cv2.imread("ProfilePicture/Unk.png", cv2.IMREAD_UNCHANGED)
+        r, g, b, a = cv2.split(unk_head)
+        unk_head_rgb_permutation = list(itertools.permutations([r, g, b], 3))
+        unk_head_permutation = []
+        for u in unk_head_rgb_permutation:
+            first, second, third = u
+            uu = cv2.merge([first, second, third, a])
+            unk_head_permutation.append(uu)
+
+        # 加载人物列表及生成图像
         with open('data/Person.json', 'r', encoding='utf-8') as f:
             self._Person = json.load(f)
+        for person in self._Person:
+            if 'head' in self._Person[person]:
+                h = cv2.imread("ProfilePicture/" + self._Person[person]["head"], cv2.IMREAD_UNCHANGED)
+                h_q = cv2.imread("ProfilePicture/" + self._Person[person]["head"])
+
+                # h 用于地图人物位置标记
+                h = cv2.resize(h, (50, 50), interpolation=cv2.INTER_CUBIC)
+
+                # h_q用于qt界面头像显示
+                h_q = cv2.resize(h_q, (200, 200), interpolation=cv2.INTER_CUBIC)
+                h_q = QImage(h_q.data, h_q.shape[1], h_q.shape[0], h_q.shape[1] * 3,
+                           QImage.Format.Format_BGR888)
+
+                self._Person[person]["head_QImage"] = h_q
+                self._Person[person]["head"] = h
+            else:
+                # h 用于地图人物位置标记
+                h = unk_head_permutation.pop()
+                b, g, r, _ = cv2.split(h)
+                h_q = cv2.merge([b, g, r])
+                h = cv2.resize(h, (200, 200), interpolation=cv2.INTER_CUBIC)
+
+                self._Person[person]["head"] = h
+                h_q = cv2.resize(h_q, (200, 200), interpolation=cv2.INTER_CUBIC)
+                h_q = QImage(h_q.data, h_q.shape[1], h_q.shape[0], h_q.shape[1] * 3,
+                             QImage.Format.Format_BGR888)
+                self._Person[person]["head_QImage"] = h_q
 
         # 一些槽函数的连接
-        self.Send_Button.clicked.connect(self.sendButtonFuction)
+        self.Send_Button.clicked.connect(self.sendButtonFunction)
         self.UserComboBox.currentIndexChanged.connect(self.__userChanged)
         self.cleartrackbutton.clicked.connect(self.__clearTrackFunction)
 
@@ -75,10 +118,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self._TimeSpaceGraph_InQueue = TimeSpaceGraph_InQueue
         self._TimeSpaceGraph_OutQueue = TimeSpaceGraph_OutQueue
 
-        # 读入地图
-        self.Im = cv2.imread('PathPlanningAstar/map.png')
-        self.__path_map = Map("PathPlanningAstar/middle.png")
-
         # 初始化路径规划模块
         # 创建路径规划进程的Queue队列
         self.__search = search(map=self.__path_map)
@@ -92,13 +131,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # 初始化当前用户
         self.CurrentUser = self._Person['晨峻']
-        self.__RobotHead = "robot.jpeg"
-        self.userhead.setPixmap(QPixmap("ProfilePicture/" + self.CurrentUser['head']))
+        self.__RobotHead = "robot.png"
+        self.userhead.setPixmap(QPixmap.fromImage(self.CurrentUser['head_QImage']))
 
         # 初始化动作扫描服务
         self.__moveTimer = QTimer(self)
         self.__moveTimer.timeout.connect(self.__moveScanf)
-        self.__moveSpeed = 100
+        self.__moveSpeed = 5
         self.__waitForPathPlanning = False
         self.__moveTimer.start(self.__moveSpeed)
 
@@ -109,12 +148,23 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dialogue_list_deal_timer.timeout.connect(self._dialogue_list_deal)
             self.dialogue_list_deal_timer.start(2000)
 
+    def _Tag_location(self):
+        self.window().setCursor(Qt.CrossCursor)
+        # self.window().mousePressEvent = self.window()._Tag_action_location_mousePressEvent
+
     def _dialogue_list_deal(self):
         if self.dialogue_list:
             dialogue = self.dialogue_list.pop(0)
             self.dealMessage(dialogue)
         else:
             self.dialogue_list_deal_timer.stop()
+
+    def _Tag_action_location_mousePressEvent(self, event: QMouseEvent):
+        """
+        位置标注动作触发时的鼠标按压事件
+        """
+        # x = event.pos().x()
+        # self.window()
 
     def __dealMessageShow(self, messageW: QNChatMessage, item: QListWidgetItem,
                           text: str, name: str, time: int, usertype: QNChatMessage.User_Type):
@@ -126,6 +176,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         item.setSizeHint(size)
         messageW.setText(text, time, name, size, usertype)
         self.listWidget.setItemWidget(item, messageW)
+
+    def map_mouseMoveEvent(self, event: QMouseEvent):
+        x, y = event.pos().x(), event.pos().y()
+        self.window().statuLabel.setText("<font color='red'>X</font>:<font color='blue'>{}</font>, "
+                                         "<font color='red'>Y</font>:<font color='blue'>{}</font>".format(x, y))
 
     def __dealMessageTime(self, curMsgTime: int):
         """
@@ -153,8 +208,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         私有化函数，进行地图图片的刷新
         """
-        cv2image = cv2.resize(cv2image, (int(cv2image.shape[1] / 4) * 4, int(cv2image.shape[0] / 4) * 4), interpolation=cv2.INTER_CUBIC)
-        showImage = QImage(cv2image.data, cv2image.shape[1], cv2image.shape[0], cv2image.shape[1] * 3, QImage.Format.Format_RGB888)
+        cv2image = cv2.resize(cv2image, (int(cv2image.shape[1] / 4) * 4, int(cv2image.shape[0] / 4) * 4),
+                              interpolation=cv2.INTER_CUBIC)
+        showImage = QImage(cv2image.data, cv2image.shape[1], cv2image.shape[0], cv2image.shape[1] * 3,
+                           QImage.Format.Format_RGB888)
         self.map.setPixmap(QPixmap.fromImage(showImage))
 
     def UserTalk(self, message: str) -> None:
@@ -167,12 +224,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         t = QDateTime.currentDateTime().toTime_t()
         self.__dealMessageTime(t)
         messageW = QNChatMessage(self.listWidget.parentWidget())
-        userHead = ""
-
-        if 'head' in self.CurrentUser:
-            userHead = "ProfilePicture/" + self.CurrentUser['head']
-        else:
-            userHead = "ProfilePicture/Unk.jpeg"
+        userHead = self.CurrentUser['head']
         messageW.setPixUser(userHead)
         item = QListWidgetItem(self.listWidget)
         self.__dealMessageShow(messageW, item, message, self.CurrentUser['name'], t, QNChatMessage.User_Type.User_She)
@@ -232,10 +284,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if currentUser == key:
                     self.CurrentUser = self._Person[key]
                     break
-            if "head" in self.CurrentUser:
-                self.userhead.setPixmap(QPixmap("ProfilePicture/" + self.CurrentUser['head']))
-            else:
-                self.userhead.setPixmap(QPixmap("ProfilePicture/" + "Unk.jpeg"))
+            self.userhead.setPixmap(QPixmap.fromImage(self.CurrentUser['head_QImage']))
         else:
             self.CurrentUser = user
             self.UserComboBox.setCurrentText(user['name'])
@@ -243,10 +292,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if user['name'] == key:
                     self.CurrentUser = self._Person[key]
                     break
-            if "head" in self.CurrentUser:
-                self.userhead.setPixmap(QPixmap("ProfilePicture/" + self.CurrentUser['head']))
-            else:
-                self.userhead.setPixmap(QPixmap("ProfilePicture/Unk.jpeg"))
+            self.userhead.setPixmap(QPixmap.fromImage(self.CurrentUser['head_QImage']))
 
     def __clearTrackFunction(self):
         """
@@ -256,7 +302,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         cv2.circle(self.Im, (self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1]), 10, (0, 0, 255), -1)
         self.__show_pic(self.Im)
 
-    def sendButtonFuction(self):
+    def sendButtonFunction(self):
         """
         用户消息发送按钮点击事件
         """
@@ -331,6 +377,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         path = [[2000, p, path[i]] for i, p in enumerate(path_l)]
         for p in path:
             self.addMoveSequence(p)
+
         # 路径地点都能找到时,将地点按顺序导入动作序列
         self.logInfo(str(path))
 
@@ -368,7 +415,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         [goalX, goalY]], waitTime表示机器人在执行动作序列之前要等待的时间
         ，单位ms. goalX，goalY分别表示该动作序列要到达的点
 
-        :param Sequence: 动作序列
+        :param: Sequence: 动作序列
         :return: None
         """
         self.__moveSequence.append(sequence)
@@ -376,18 +423,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def StartActionSequence(self):
         """
         启动动作序列的依次执行
+
         """
         self.__moveTimer.start(self.__moveSpeed)
 
     def StopActionSequence(self):
         """
         停止动作序列的执行和
+
         """
         self.__moveTimer.stop()
 
     def __moveScanf(self):
         """
         动作序列的扫描函数
+
         """
         if self.__currentMovePath:  # 当路径序列不为空时执行当前路径
             self.RobotCurrentPoint_pix = self.__currentMovePath.pop(0)  # 读出路径序列第一个元素
@@ -413,9 +463,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 waitTime, [goalX, goalY], name = self.__moveSequence.pop(0)  # 读出动作序列第一个元素
                 goalX, goalY = world_to_pixel((goalX, goalY))
                 self.PathPlanningProcess_InQueue.put([self.RobotCurrentPoint_pix[0],
-                                                     self.RobotCurrentPoint_pix[1],
-                                                     goalX,
-                                                     goalY])
+                                                      self.RobotCurrentPoint_pix[1],
+                                                      goalX,
+                                                      goalY])
                 self.logInfo("Current goal: " + name)
                 self.__waitForPathPlanning = True
                 # self.__moveTimer.start(self.__moveSpeed)  # 重启扫描
@@ -444,29 +494,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         return pixle_point, point
 
 
-# def dialogue_list_deal(QThread):
-#     sinOut = pyqtSignal(str)
-#
-#     def __init__(self, parent=None):
-#         super(dialogue_list_deal, self).__init__(parent)
-#         # 设置工作状态与初始num数值
-#         self.working = True
-#         self.num = 0
-#
-#     def __del__(self):
-#         # 线程状态改变与线程终止
-#         self.working = False
-#         self.wait()
-#
-#     def run(self):
-#         while self.working:
-
-def PathPlanningProcess(qi: multiprocessing.Queue, qo:multiprocessing.Queue):
+def PathPlanningProcess(qi: multiprocessing.Queue, qo: multiprocessing.Queue):
     path_map = Map("PathPlanningAstar/middle.png")
     s = search(map=path_map)
     while True:
         if not qi.empty():
             start_x, start_y, goal_x, goal_y = qi.get()
+            print((start_x, start_y), (goal_x, goal_y))
             path = s.make_path((start_x, start_y), (goal_x, goal_y))
             qo.put(path)
 
@@ -493,18 +527,18 @@ def InstructionPrediction_process(qi: multiprocessing.Queue, qo: multiprocessing
 
 
 def main():
-    dialogue_list = ['刘老师:大家上午8点15分到1号会议室开会',
-                     '兰军:收到',
-                     '港晖:老师，我8点15分要去1001教室上课，能不能换个时间？',
-                     '刘老师:那我们就换到9点吧',
-                     '晨峻:收到',
-                     '伟华:收到',
-                     '姚峰:收到',
-                     '港晖:收到',
-                     '小飞:收到',
-                     '晨峻:@ Robot从港晖那拿份文件给兰军'
-                     ]
-
+    # dialogue_list = ['刘老师:大家上午8点15分到1号会议室开会',
+    #                  '兰军:收到',
+    #                  '港晖:老师，我8点15分要去1001教室上课，能不能换个时间？',
+    #                  '刘老师:那我们就换到9点吧',
+    #                  '晨峻:收到',
+    #                  '伟华:收到',
+    #                  '姚峰:收到',
+    #                  '港晖:收到',
+    #                  '小飞:收到',
+    #                  '晨峻:@ Robot从港晖那拿份文件给兰军'
+    #                  ]
+    dialogue_list = None
     # 指令解析服务的进程通信队列
     InstructionPrediction_InQueue, InstructionPrediction_OutQueue = multiprocessing.Queue(), multiprocessing.Queue()
 
@@ -542,7 +576,8 @@ def main():
                         dialogue_list=dialogue_list)
     window.show()
 
-    sys.exit([app.exec_(), _TimeSpaceGraph_process.terminate(), _InstructionPrediction_process.terminate(), _PathPlanning_process.terminate()])
+    sys.exit([app.exec_(), _TimeSpaceGraph_process.terminate(), _InstructionPrediction_process.terminate(),
+              _PathPlanning_process.terminate()])
 
 
 if __name__ == '__main__':

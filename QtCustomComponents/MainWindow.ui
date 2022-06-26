@@ -49,22 +49,22 @@ border:2px groove gray;
      </property>
      <item>
       <property name="text">
-       <string>WenDong</string>
+       <string>晨峻</string>
       </property>
      </item>
      <item>
       <property name="text">
-       <string>Mr.Liu</string>
+       <string>刘老师</string>
       </property>
      </item>
      <item>
       <property name="text">
-       <string>GangHui</string>
+       <string>港晖</string>
       </property>
      </item>
      <item>
       <property name="text">
-       <string>LanJun</string>
+       <string>兰军</string>
       </property>
      </item>
     </widget>
@@ -332,7 +332,7 @@ QListWidget::item:selected:!active{border: 1px solid  rgb(247, 247, 247); backgr
      <x>0</x>
      <y>0</y>
      <width>1643</width>
-     <height>28</height>
+     <height>23</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -342,7 +342,15 @@ QListWidget::item:selected:!active{border: 1px solid  rgb(247, 247, 247); backgr
     <addaction name="action_open_map"/>
     <addaction name="action_exit"/>
    </widget>
+   <widget class="QMenu" name="menuTool">
+    <property name="title">
+     <string>Tool</string>
+    </property>
+    <addaction name="actionTag_location"/>
+    <addaction name="actionadd_preson"/>
+   </widget>
    <addaction name="menuFile"/>
+   <addaction name="menuTool"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="action_open_map">
@@ -353,6 +361,16 @@ QListWidget::item:selected:!active{border: 1px solid  rgb(247, 247, 247); backgr
   <action name="action_exit">
    <property name="text">
     <string>&amp;exit</string>
+   </property>
+  </action>
+  <action name="actionTag_location">
+   <property name="text">
+    <string>tag_location</string>
+   </property>
+  </action>
+  <action name="actionadd_preson">
+   <property name="text">
+    <string>add_preson</string>
    </property>
   </action>
  </widget>

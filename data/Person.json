@@ -1,23 +1,23 @@
 {
     "港晖": {
         "name": "港晖",
-        "position": "Room512",
-        "head": "GangHui.jpeg"
+        "position": "Room511",
+        "head": "GangHui.png"
     },
     "兰军": {
         "name": "兰军",
         "position": "Room512",
-        "head": "LanJun.jpeg"
+        "head": "LanJun.png"
     },
     "晨峻": {
         "name": "晨峻",
         "position": "Room512",
-        "head": "ChenJun.jpeg"
+        "head": "ChenJun.png"
     },
     "刘老师": {
         "name": "刘老师",
         "position": "Room511",
-        "head": "Mr.Liu.jpeg"
+        "head": "Mr.Liu.png"
     },
     "袁老师": {
         "name": "袁老师",
@@ -26,10 +26,6 @@
     "文栋": {
         "name": "文栋",
         "position": "Room516"
-    },
-    "伟华": {
-        "name": "伟华",
-        "position": "Room513"
     },
     "郝伟": {
         "name": "郝伟",
@@ -46,25 +42,5 @@
     "姚峰": {
         "name": "姚峰",
         "position": "Room512"
-    },
-    "侯煊": {
-        "name": "侯煊",
-        "position": "Room514"
-    },
-    "海洋": {
-        "name": "海洋",
-        "position": "Room514"
-    },
-    "靖宇": {
-        "name": "靖宇",
-        "position": "Room514"
-    },
-    "馨竹": {
-        "name": "馨竹",
-        "position": "Room515"
-    },
-    "兴航": {
-        "name": "兴航",
-        "position": "Room515"
     }
 }
