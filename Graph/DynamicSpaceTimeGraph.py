@@ -1,6 +1,7 @@
 # -*-coding:utf-8-*-
 import random
 
+import numpy
 from scipy.stats import skewnorm
 import networkx as nx
 
@@ -10,6 +11,9 @@ import time
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+
+from PIL import Image
 import matplotlib
 import json
 
@@ -122,8 +126,29 @@ class Graph():
         nx.draw_networkx(self.G, with_labels=False, width=2, pos=self.pos, node_color=self.node_colors,
                          edge_color=self.edge_colors, edge_cmap=plt.cm.Blues)  # add colors
         plt.savefig('Graph/graph_update.png')
+        canvas=FigureCanvasAgg(plt.gcf())
+        # 绘制图像
+        canvas.draw()
+        # 获取图像尺寸
+        w, h = canvas.get_width_height()
+        # 解码string 得到argb图像
+        buf = np.fromstring(canvas.tostring_argb(), dtype=np.uint8)
+        # 重构成w h 4(argb)图像
+        buf.shape = (w, h, 4)
+        # 转换为 RGBA
+        buf = np.roll(buf, 3, axis=2)
+        # 得到 Image RGBA图像对象 (需要Image对象的同学到此为止就可以了)
+        image = Image.frombytes("RGBA", (w, h), buf.tostring())
+        # 转换为numpy array rgba四通道数组
+        image = np.asarray(image)
+        # 转换为rgb图像
+        rgb_image = image[:, :, :3]
+        # print(rgb_image)
+        img=cv2.cvtColor(rgb_image,cv2.COLOR_BGR2RGBA)
+
         plt.close()
         self.G.clear()
+        return img
 
 
 class update():
@@ -147,6 +172,7 @@ class update():
         self.if_need_change = 0
         self.tmp_graph = {}
         self.event = {}
+        self.image=None
 
     def receive_messege(self, triple, text):
         # for i in messege:
@@ -245,10 +271,11 @@ class update():
 
                 if value[2] != '':
                     value[2] = get_time(value[2])
-                self.per_event.append([value[0], value[1], value[2]])
+                if value[1]!='' and value[2]!='':
+                    self.per_event.append([value[0], value[1], value[2]])
                 # print(self.per_event)
-                if value[0] in ['我们', '大家', '咱们', '全体员工', '所有人']:
-                    total_person_flag = 1
+                    if value[0] in ['我们', '大家', '咱们', '全体员工', '所有人']:
+                        total_person_flag = 1
 
             if total_person_flag == 1:  # 把我们更换成人名
                 event_time = value[2]
@@ -256,7 +283,7 @@ class update():
                 self.per_event = []
                 for i in self.person:
                     self.per_event.append([i, event_location, event_time])
-            if self.triple != []:
+            if self.triple != [] and self.per_event!=[]:
                 self.event[self.initiator].append(self.per_event)
 
         # 由于是新的时间，所以把之前的存在的事件就默认已经确定不变，放在self.tmp_graph中，
@@ -272,7 +299,7 @@ class update():
                     value[1] = value[1].split('的办公室')[0]
                     value[1] = self.graph_rel[value[1]]['rel_base'][1]
 
-                if value[2] is not None:
+                if value[2]!='':
                     value[2] = get_time(value[2])
 
                 # 时间地点都有
@@ -305,11 +332,12 @@ class update():
 
     def update_auto(self):  # 自动的改变
         self.a = Graph()
+        # img = cv2.imread('Graph/graph_update.png')
         while 1:
-            time.sleep(1)
+            time.sleep(0.5)
             self.update_rel()
             '''按照时间函数更新'''
-            # img = cv2.imread('Graph/graph_update.png')
+            # img = plt.imread('Graph/graph_update.png')
             m = self.need_update.copy()
             for k, info in self.need_update.items():
                 '''设置时间函数的计算参数'''
@@ -334,14 +362,16 @@ class update():
                     info_detail = '{} come back to office!!!'.format(info[0])
             self.need_update = m
             # print(self.graph_rel)
-            self.a.draw(self.graph_rel)
+            self.image=self.a.draw(self.graph_rel)
             time.sleep(0.1)
-            # cv2.putText(img, stamptotime(self.now_time), (200, 90), cv2.FONT_HERSHEY_COMPLEX, 2.0, (100, 200, 200),
+            # cv2.putText(image, stamptotime(self.now_time), (200, 90), cv2.FONT_HERSHEY_COMPLEX, 2.0, (100, 200, 200),
             #             2)
-            # cv2.imshow('graph', img)
-            self.now_time += 60
+            # cv2.imshow('graph', image)
+            #
             # if cv2.waitKey(1) & 0xFF == ord('q'):
-            # 	break
+            #     break
+            self.now_time += 60
+
 
 
 
