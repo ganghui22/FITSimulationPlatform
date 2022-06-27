@@ -119,7 +119,7 @@ def map_track_middle(map_path: str) -> None:
             if map_binary[x, y] == 0:
                 map_binary[x, y] = 0
     contours, hierarchy = cv2.findContours(map_binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-    cv2.drawContours(map_connectedcomponents, contours, -1, 0, 1)
+    cv2.drawContours(map_connectedcomponents, contours, -1, 0, 12)
     map_name = map_path.split('.')
     cv2.imwrite('middle' + '.png', map_connectedcomponents)
 # 类定义

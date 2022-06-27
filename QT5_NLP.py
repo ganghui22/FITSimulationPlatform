@@ -6,7 +6,7 @@ import cv2
 import time
 import random
 from multiprocessing import Process, Queue
-from PyQt5.QtCore import QTimer, QSize, QDateTime, Qt,QThread, pyqtSignal
+from PyQt5.QtCore import QTimer, QSize, QDateTime, Qt, QPoint, QThread, pyqtSignal
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from QtCustomComponents.MainWindow import Ui_MainWindow
@@ -60,6 +60,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # 加载人物列表及生成图像
         with open('data/Person.json', 'r', encoding='utf-8') as f:
             self._Person = json.load(f)
+
         for person in self._Person:
             if 'head' in self._Person[person]:
                 h = cv2.imread("ProfilePicture/" + self._Person[person]["head"], cv2.IMREAD_UNCHANGED)
@@ -141,6 +142,13 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.__waitForPathPlanning = False
         self.__moveTimer.start(self.__moveSpeed)
 
+        # map事件的用到的一些参数的初始化
+        self.map.start_pos = QPoint()
+        self.map.end_pos = QPoint()
+
+        self.map.mouseDown = False
+        # self.map_view = QGraphicsView(self.map)
+
         # 列表扫描服务
         if dialogue_list is not None:
             self.dialogue_list = dialogue_list
@@ -151,7 +159,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def _Tag_location(self):
         self.window().setCursor(Qt.CrossCursor)
         # self.window().mousePressEvent = self.window()._Tag_action_location_mousePressEvent
-
+        # self.window().map.mouseMoveEvent = self.window()._Tag_action_location_mousePressEvent
+        self.map_view.mouseMoveEvent = self._Tag_action_location_mouseMoveEvent
     def _dialogue_list_deal(self):
         if self.dialogue_list:
             dialogue = self.dialogue_list.pop(0)
@@ -163,8 +172,34 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         位置标注动作触发时的鼠标按压事件
         """
+        if event.button() == Qt.LeftButton:
+            self.window().map.start_pos = event.pos()
+            self.map.mouseDown = True
         # x = event.pos().x()
         # self.window()
+
+    def _Tag_action_location_mouseMoveEvent(self, event: QMouseEvent):
+        """
+        位置标注动作触发时的鼠标移动事件
+        """
+        if event.button() == Qt.LeftButton:
+            if self.window().map.mouseDown:
+                self.window().map.end_pos = event.pos()
+                self.paint()
+
+    def _Tag_action_location_mouseReleaseEvent(self, event: QMouseEvent):
+        """
+        位置标注动作触发时的鼠标释放事件
+        """
+        if self.window().map.mouseDown:
+            self.window().map.end_pos = event.pos()
+            self.self.window().map.mouseDown = False
+
+    def paint(self):
+        """
+        位置标注动作框选时的画框函数
+        """
+
 
     def __dealMessageShow(self, messageW: QNChatMessage, item: QListWidgetItem,
                           text: str, name: str, time: int, usertype: QNChatMessage.User_Type):
@@ -224,7 +259,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         t = QDateTime.currentDateTime().toTime_t()
         self.__dealMessageTime(t)
         messageW = QNChatMessage(self.listWidget.parentWidget())
-        userHead = self.CurrentUser['head']
+        userHead = self.CurrentUser['head_QImage']
         messageW.setPixUser(userHead)
         item = QListWidgetItem(self.listWidget)
         self.__dealMessageShow(messageW, item, message, self.CurrentUser['name'], t, QNChatMessage.User_Type.User_She)
@@ -527,18 +562,19 @@ def InstructionPrediction_process(qi: multiprocessing.Queue, qo: multiprocessing
 
 
 def main():
-    # dialogue_list = ['刘老师:大家上午8点15分到1号会议室开会',
-    #                  '兰军:收到',
-    #                  '港晖:老师，我8点15分要去1001教室上课，能不能换个时间？',
-    #                  '刘老师:那我们就换到9点吧',
-    #                  '晨峻:收到',
-    #                  '伟华:收到',
-    #                  '姚峰:收到',
-    #                  '港晖:收到',
-    #                  '小飞:收到',
-    #                  '晨峻:@ Robot从港晖那拿份文件给兰军'
-    #                  ]
     dialogue_list = None
+    dialogue_list = ['刘老师:大家上午8点15分到1号会议室开会',
+                     '兰军:收到',
+                     '港晖:老师，我8点15分要去1001教室上课，能不能换个时间？',
+                     '刘老师:那我们就换到9点吧',
+                     '晨峻:收到',
+                     '兴航:收到',
+                     '姚峰:收到',
+                     '港晖:收到',
+                     '小飞:收到',
+                     '晨峻:@ Robot从港晖那拿份文件给兰军'
+                     ]
+
     # 指令解析服务的进程通信队列
     InstructionPrediction_InQueue, InstructionPrediction_OutQueue = multiprocessing.Queue(), multiprocessing.Queue()
 

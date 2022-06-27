@@ -2,7 +2,7 @@ import math
 import time
 from enum import Enum
 from PyQt5.QtCore import QDateTime, Qt, QRect, QSize, QPointF, QRectF
-from PyQt5.QtGui import QFontMetrics, QPixmap, QPaintEvent, QPainter, QMovie, QBrush, QColor, QPen, QTextOption
+from PyQt5.QtGui import QFontMetrics, QPixmap, QImage, QPainter, QMovie, QBrush, QColor, QPen, QTextOption
 from PyQt5.QtWidgets import QLabel
 from PyQt5.QtWidgets import *
 import PyQt5.QtWidgets
@@ -55,8 +55,8 @@ class QNChatMessage(QWidget):
         self.m_lineHeight = 0
         self.usrname = " "
 
-    def setPixUser(self, ProfilePicturePath):
-        self.m_leftPixmap = QPixmap.fromImage(ProfilePicturePath)
+    def setPixUser(self, qImage:QImage):
+        self.m_leftPixmap = QPixmap.fromImage(qImage)
 
     def setTextSuccess(self):
         self.m_loading.hide()

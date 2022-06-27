@@ -23,24 +23,24 @@
         "name": "袁老师",
         "position": "Room511"
     },
-    "文栋": {
-        "name": "文栋",
+    "学泽": {
+        "name": "学泽",
         "position": "Room516"
     },
-    "郝伟": {
-        "name": "郝伟",
+    "兴航": {
+        "name": "兴航",
         "position": "Room512"
     },
     "小飞": {
         "name": "小飞",
         "position": "Room513"
     },
-    "刘毅": {
-        "name": "刘毅",
-        "position": "Room512"
-    },
     "姚峰": {
         "name": "姚峰",
+        "position": "Room512"
+    },
+    "吴垒": {
+        "name": "吴垒",
         "position": "Room512"
     }
 }
