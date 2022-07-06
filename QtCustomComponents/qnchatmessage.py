@@ -55,8 +55,8 @@ class QNChatMessage(QWidget):
         self.m_lineHeight = 0
         self.usrname = " "
 
-    def setPixUser(self, qImage:QImage):
-        self.m_leftPixmap = QPixmap.fromImage(qImage)
+    def setPixUser(self, q_pixmap: QPixmap):
+        self.m_leftPixmap = q_pixmap
 
     def setTextSuccess(self):
         self.m_loading.hide()

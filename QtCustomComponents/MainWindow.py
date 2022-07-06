@@ -17,11 +17,31 @@ class Ui_MainWindow(object):
         MainWindow.resize(1643, 1014)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
         self.centralwidget.setObjectName("centralwidget")
-        self.widget = QtWidgets.QWidget(self.centralwidget)
-        self.widget.setGeometry(QtCore.QRect(10, 810, 451, 161))
-        self.widget.setObjectName("widget")
-        self.UserComboBox = QtWidgets.QComboBox(self.widget)
-        self.UserComboBox.setGeometry(QtCore.QRect(0, 0, 115, 35))
+        self.listWidget = QtWidgets.QListWidget(self.centralwidget)
+        self.listWidget.setGeometry(QtCore.QRect(10, 20, 441, 751))
+        self.listWidget.setStyleSheet("QListWidget{background-color: rgb(247, 247, 247); color:rgb(51,51,51); border: 1px solid  rgb(247, 247, 247);outline:0px;}\n"
+"QListWidget::Item{background-color: rgb(247, 247, 247);}\n"
+"QListWidget::Item:hover{background-color: rgb(247, 247, 247); }\n"
+"QListWidget::item:selected{\n"
+"    background-color: rgb(247, 247, 247);\n"
+"    color:black; \n"
+"    border: 1px solid  rgb(247, 247, 247);\n"
+"}\n"
+"QListWidget::item:selected:!active{border: 1px solid  rgb(247, 247, 247); background-color: rgb(247, 247, 247); color:rgb(51,51,51); } ")
+        self.listWidget.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
+        self.listWidget.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
+        self.listWidget.setObjectName("listWidget")
+        self.userhead = QtWidgets.QLabel(self.centralwidget)
+        self.userhead.setGeometry(QtCore.QRect(10, 820, 110, 110))
+        self.userhead.setAutoFillBackground(False)
+        self.userhead.setStyleSheet("border-radius:6px;\n"
+"padding:2px 4px;\n"
+"border-style: outset;\n"
+"border:2px groove gray;")
+        self.userhead.setText("")
+        self.userhead.setObjectName("userhead")
+        self.UserComboBox = QtWidgets.QComboBox(self.centralwidget)
+        self.UserComboBox.setGeometry(QtCore.QRect(10, 780, 115, 35))
         font = QtGui.QFont()
         font.setPointSize(14)
         self.UserComboBox.setFont(font)
@@ -36,17 +56,8 @@ class Ui_MainWindow(object):
         self.UserComboBox.addItem("")
         self.UserComboBox.addItem("")
         self.UserComboBox.addItem("")
-        self.userhead = QtWidgets.QLabel(self.widget)
-        self.userhead.setGeometry(QtCore.QRect(0, 40, 110, 110))
-        self.userhead.setAutoFillBackground(False)
-        self.userhead.setStyleSheet("border-radius:6px;\n"
-"padding:2px 4px;\n"
-"border-style: outset;\n"
-"border:2px groove gray;")
-        self.userhead.setText("")
-        self.userhead.setObjectName("userhead")
-        self.chat_text = QtWidgets.QTextEdit(self.widget)
-        self.chat_text.setGeometry(QtCore.QRect(120, 0, 321, 150))
+        self.chat_text = QtWidgets.QTextEdit(self.centralwidget)
+        self.chat_text.setGeometry(QtCore.QRect(130, 780, 321, 150))
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -60,8 +71,8 @@ class Ui_MainWindow(object):
 "border-top-color:rgb(186, 189, 182);\n"
 "border:none;")
         self.chat_text.setObjectName("chat_text")
-        self.Send_Button = QtWidgets.QPushButton(self.widget)
-        self.Send_Button.setGeometry(QtCore.QRect(350, 110, 75, 35))
+        self.Send_Button = QtWidgets.QPushButton(self.centralwidget)
+        self.Send_Button.setGeometry(QtCore.QRect(370, 890, 75, 35))
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -84,28 +95,8 @@ class Ui_MainWindow(object):
         self.Send_Button.setDefault(False)
         self.Send_Button.setFlat(False)
         self.Send_Button.setObjectName("Send_Button")
-        self.widget_2 = QtWidgets.QWidget(self.centralwidget)
-        self.widget_2.setGeometry(QtCore.QRect(460, 0, 911, 971))
-        self.widget_2.setObjectName("widget_2")
-        self.map = QtWidgets.QLabel(self.widget_2)
-        self.map.setGeometry(QtCore.QRect(0, 10, 910, 910))
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.map.sizePolicy().hasHeightForWidth())
-        self.map.setSizePolicy(sizePolicy)
-        self.map.setAutoFillBackground(False)
-        self.map.setStyleSheet("border-radius:6px;\n"
-"padding:2px 4px;\n"
-"border-style: outset;\n"
-"border:2px groove gray;")
-        self.map.setLocale(QtCore.QLocale(QtCore.QLocale.Chinese, QtCore.QLocale.China))
-        self.map.setFrameShadow(QtWidgets.QFrame.Plain)
-        self.map.setText("")
-        self.map.setTextFormat(QtCore.Qt.PlainText)
-        self.map.setObjectName("map")
-        self.cleartrackbutton = QtWidgets.QPushButton(self.widget_2)
-        self.cleartrackbutton.setGeometry(QtCore.QRect(0, 930, 910, 35))
+        self.cleartrackbutton = QtWidgets.QPushButton(self.centralwidget)
+        self.cleartrackbutton.setGeometry(QtCore.QRect(470, 890, 431, 35))
         font = QtGui.QFont()
         font.setPointSize(14)
         self.cleartrackbutton.setFont(font)
@@ -117,11 +108,8 @@ class Ui_MainWindow(object):
 "background-color: rgb(229, 234, 233);\n"
 "color: rgb(37, 194, 118);")
         self.cleartrackbutton.setObjectName("cleartrackbutton")
-        self.widget_3 = QtWidgets.QWidget(self.centralwidget)
-        self.widget_3.setGeometry(QtCore.QRect(1370, 10, 271, 961))
-        self.widget_3.setObjectName("widget_3")
-        self.chat_interface = QtWidgets.QTextBrowser(self.widget_3)
-        self.chat_interface.setGeometry(QtCore.QRect(10, 0, 251, 951))
+        self.chat_interface = QtWidgets.QTextBrowser(self.centralwidget)
+        self.chat_interface.setGeometry(QtCore.QRect(1370, 20, 271, 931))
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Ignored, QtWidgets.QSizePolicy.Ignored)
         sizePolicy.setHorizontalStretch(0)
         sizePolicy.setVerticalStretch(0)
@@ -134,23 +122,12 @@ class Ui_MainWindow(object):
         self.chat_interface.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOn)
         self.chat_interface.setTabChangesFocus(False)
         self.chat_interface.setObjectName("chat_interface")
-        self.widget_4 = QtWidgets.QWidget(self.centralwidget)
-        self.widget_4.setGeometry(QtCore.QRect(10, 10, 441, 791))
-        self.widget_4.setObjectName("widget_4")
-        self.listWidget = QtWidgets.QListWidget(self.widget_4)
-        self.listWidget.setGeometry(QtCore.QRect(0, 0, 441, 791))
-        self.listWidget.setStyleSheet("QListWidget{background-color: rgb(247, 247, 247); color:rgb(51,51,51); border: 1px solid  rgb(247, 247, 247);outline:0px;}\n"
-"QListWidget::Item{background-color: rgb(247, 247, 247);}\n"
-"QListWidget::Item:hover{background-color: rgb(247, 247, 247); }\n"
-"QListWidget::item:selected{\n"
-"    background-color: rgb(247, 247, 247);\n"
-"    color:black; \n"
-"    border: 1px solid  rgb(247, 247, 247);\n"
-"}\n"
-"QListWidget::item:selected:!active{border: 1px solid  rgb(247, 247, 247); background-color: rgb(247, 247, 247); color:rgb(51,51,51); } ")
-        self.listWidget.setVerticalScrollBarPolicy(QtCore.Qt.ScrollBarAsNeeded)
-        self.listWidget.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff)
-        self.listWidget.setObjectName("listWidget")
+        self.map_view_mini = QtWidgets.QGraphicsView(self.centralwidget)
+        self.map_view_mini.setGeometry(QtCore.QRect(460, 20, 381, 301))
+        self.map_view_mini.setObjectName("map_view_mini")
+        self.map_view_real = QtWidgets.QGraphicsView(self.centralwidget)
+        self.map_view_real.setGeometry(QtCore.QRect(850, 20, 511, 301))
+        self.map_view_real.setObjectName("map_view_real")
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QtWidgets.QMenuBar(MainWindow)
         self.menubar.setGeometry(QtCore.QRect(0, 0, 1643, 23))

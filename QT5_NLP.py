@@ -18,6 +18,7 @@ from PathPlanningAstar.util_llj.AStar import *
 from update_time_space_graph import deal
 import itertools
 
+
 class MainWindow(QMainWindow, Ui_MainWindow):
     def __init__(self,
                  InstructionPrediction_InQueue: multiprocessing.Queue,
@@ -32,17 +33,105 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         self.setupUi(self)
 
-        self.actionTag_location.triggered.connect(self._Tag_location)
-        # 读入地图
-        self.Im = cv2.imread('PathPlanningAstar/map.png')
-        self.__path_map = Map("PathPlanningAstar/middle.png")
-        self.statuLabel = QLabel()
-        self.statusbar.addWidget(self.statuLabel)
-        Im_W, Im_H, map_W, map_H = self.Im.shape[1], self.Im.shape[0], self.map.width(), self.map.height()
-        self.map.setGeometry(self.map.x(), self.map.y(), map_W, int(map_W * (Im_H / Im_W)))
-        self.map.setMouseTracking(True)
-        self.map.mouseMoveEvent = self.map_mouseMoveEvent
+        # 加载当前屏幕的分辨率
+        current_screenNumber = qApp.desktop().screenNumber()
+        desktop_w, desktop_h = qApp.desktop().screenGeometry(current_screenNumber).width(), \
+                               qApp.desktop().screenGeometry(current_screenNumber).height()
 
+        # 加载地图
+        self._map = QPixmap("PathPlanningAstar/map.png")
+        self._map_w, self._map_h = self._map.width(), self._map.height()
+
+        # 加载机器人头像
+        self._robot = QPixmap("ProfilePicture/robot.png") \
+            .scaled(60, 60, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+
+        # 设置全屏显示
+        self.setGeometry(self.centralwidget.x() + 0, self.centralwidget.height() + 0, desktop_w, desktop_h)
+        self.centralwidget.setGeometry(0,
+                                       0,
+                                       self.width(),
+                                       self.height() - self.menubar.height() - self.statusbar.height())
+
+        # map scene 设置, 长宽为map的分辨率
+        self.map_scene = QGraphicsScene(0, 0, self._map_w,
+                                        self._map_h)
+        # 向map scene中添加地图
+        self.map_scene_map_item = self.map_scene.addPixmap(self._map)
+        # 向map scene中添加机器人
+        self.map_scene_robot_item = self.map_scene.addPixmap(self._robot)
+        # 设置机器人的图层为2
+        self.map_scene_robot_item.setZValue(2)
+        # 生成机器人随机位置
+        self.RobotCurrentPoint_pix, self.RobotCurrentPoint = self.__getRandomAgentLocation()
+        # 设置机器人位置
+        self.map_scene_robot_item.setPos(int((self.RobotCurrentPoint_pix[0] - self._robot.width() / 2)),
+                                         int(self.RobotCurrentPoint_pix[1] - self._robot.height() / 2))
+
+        # map_scene real view 即局部地图的view设置
+        self.map_view_real.setScene(self.map_scene)
+
+        # map_scene real view 即全局小地图的view设置
+        self.map_view_mini.setScene(self.map_scene)
+
+        # 路径画笔定义
+        path_pen = QPen()
+        path_pen.setColor(QColor(255, 0, 0))
+        path_pen.setStyle(Qt.DotLine)
+        path_pen.setWidth(5)
+        self._map_scene_path = QPainterPath()
+        self._map_scene_path.moveTo(self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1])
+        self._map_scene_path_item = self.map_scene.addPath(self._map_scene_path, path_pen)
+        self._map_scene_path_item.setPen(path_pen)
+        # 设置路径的图层为1
+        self._map_scene_path_item.setZValue(1)
+        self.actionTag_location.triggered.connect(self._Tag_location)
+
+        # 布局设计
+        # 全局小地图大小和位置设置
+        self.map_view_mini.setGeometry(self.centralwidget.x() + int(self.centralwidget.width() / 4),
+                                       self.centralwidget.y() + 10,
+                                       int(self.centralwidget.width() / 4), int(self.centralwidget.width() / 4))
+        self.map_view_mini.scale(0.99 * self.map_view_mini.width() / self._map_w,
+                                 0.99 * self.map_view_mini.height() / self._map_h * (self._map_h / self._map_w))
+        # 局部地图的view大小和位置设置,以及聚焦机器人
+        self.map_view_real.setGeometry(self.centralwidget.x() + 2 * int(self.centralwidget.width() / 4),
+                                       self.centralwidget.y() + 10,
+                                       2 * int(self.centralwidget.width() / 4),
+                                       int(self.centralwidget.width() / 4))
+        self.map_view_real.centerOn(self.map_scene_robot_item)
+        # 聊天框大小及位置设置
+        self.listWidget.setGeometry(self.centralwidget.x() + 10,
+                                    self.centralwidget.y() + 10,
+                                    int(self.centralwidget.width() / 4) - 10,
+                                    int(4 * self.centralwidget.height() / 5))
+        # 用户选择框大小及位置设置
+        self.UserComboBox.move(self.listWidget.x(), self.listWidget.y() + self.listWidget.height() + 10)
+        self.UserComboBox.setFixedWidth(int(self.listWidget.width() / 4) - 10) # 聊天框的五分之一减去10
+        self.UserComboBox.setFixedHeight(self.centralwidget.height() - self.listWidget.height() - \
+                                         self.UserComboBox.width() - 10 - 10 - 10)
+        # 用户头像框大小及位置设置
+        self.userhead.setGeometry(self.UserComboBox.x(),
+                                  self.UserComboBox.y() + self.UserComboBox.height() + 10,
+                                  self.UserComboBox.width(),
+                                  self.UserComboBox.width())
+        # 文本框大小及位置设置
+        self.chat_text.setGeometry(self.UserComboBox.x() + self.UserComboBox.width() + 10,
+                                   self.UserComboBox.y(),
+                                   self.listWidget.width() - 10 - self.UserComboBox.width(),
+                                   self.UserComboBox.height() + 10 + self.userhead.height())
+        # 发送按钮位置设置
+        self.Send_Button.move(self.chat_text.x() + self.chat_text.width() - self.Send_Button.width() - 5,
+                              self.chat_text.y() + self.chat_text.height() - self.Send_Button.height() - 5)
+        # 清空按钮的大小及位置设置
+        self.cleartrackbutton.move(self.map_view_mini.x(), self.map_view_mini.y()+self.map_view_mini.height()+10)
+        self.cleartrackbutton.setFixedWidth(self.map_view_mini.width()+self.map_view_real.width())
+
+        # 信息打印窗口大小及位置设置
+        self.chat_interface.setFixedHeight(int(self.centralwidget.height()-self.map_view_real.height()-20))
+        self.chat_interface.setFixedWidth(int(self.centralwidget.width()/4 - 20))
+        self.chat_interface.move(self.map_view_real.x() + self.map_view_real.width() + 10,
+                                 self.map_view_real.y())
         # 加载地点列表
         with open('data/Location_list.json', 'r', encoding='utf-8') as f:
             self._location_list = json.load(f)
@@ -55,39 +144,18 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         for u in unk_head_rgb_permutation:
             first, second, third = u
             uu = cv2.merge([first, second, third, a])
-            unk_head_permutation.append(uu)
+            q_uu = QPixmap.fromImage(QImage(uu.data, uu.shape[1], uu.shape[0], uu.shape[1] * 3,
+                                            QImage.Format.Format_RGBA8888))
+            unk_head_permutation.append(q_uu)
 
         # 加载人物列表及生成图像
         with open('data/Person.json', 'r', encoding='utf-8') as f:
             self._Person = json.load(f)
-
         for person in self._Person:
             if 'head' in self._Person[person]:
-                h = cv2.imread("ProfilePicture/" + self._Person[person]["head"], cv2.IMREAD_UNCHANGED)
-                h_q = cv2.imread("ProfilePicture/" + self._Person[person]["head"])
-
-                # h 用于地图人物位置标记
-                h = cv2.resize(h, (50, 50), interpolation=cv2.INTER_CUBIC)
-
-                # h_q用于qt界面头像显示
-                h_q = cv2.resize(h_q, (200, 200), interpolation=cv2.INTER_CUBIC)
-                h_q = QImage(h_q.data, h_q.shape[1], h_q.shape[0], h_q.shape[1] * 3,
-                           QImage.Format.Format_BGR888)
-
-                self._Person[person]["head_QImage"] = h_q
-                self._Person[person]["head"] = h
+                self._Person[person]["head_QPixmap"] = QPixmap("ProfilePicture/" + self._Person[person]["head"])
             else:
-                # h 用于地图人物位置标记
-                h = unk_head_permutation.pop()
-                b, g, r, _ = cv2.split(h)
-                h_q = cv2.merge([b, g, r])
-                h = cv2.resize(h, (200, 200), interpolation=cv2.INTER_CUBIC)
-
-                self._Person[person]["head"] = h
-                h_q = cv2.resize(h_q, (200, 200), interpolation=cv2.INTER_CUBIC)
-                h_q = QImage(h_q.data, h_q.shape[1], h_q.shape[0], h_q.shape[1] * 3,
-                             QImage.Format.Format_BGR888)
-                self._Person[person]["head_QImage"] = h_q
+                self._Person[person]["head_QPixmap"] = unk_head_permutation.pop()
 
         # 一些槽函数的连接
         self.Send_Button.clicked.connect(self.sendButtonFunction)
@@ -95,7 +163,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.cleartrackbutton.clicked.connect(self.__clearTrackFunction)
 
         # 一些Qt组件的属性设置
-        self.map.setScaledContents(True)
         self.userhead.setScaledContents(True)
         self.RobotTargetPoint_pix = None
 
@@ -107,12 +174,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.count = 0
         self.__pointNumber = 0
 
-        # 导入自然语言处理工具
+        # 接入自然语言处理工具
         # 创建对话分析工具Queue队列
         self._InstructionPrediction_InQueue = InstructionPrediction_InQueue
         self._InstructionPrediction_OutQueue = InstructionPrediction_OutQueue
-
-        # self._instruction_deal = InstructionPrediction()  # 指令处理工具
 
         # 初始化动态时空图谱
         # 创建动态时空图谱进程的Queue队列
@@ -121,19 +186,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # 初始化路径规划模块
         # 创建路径规划进程的Queue队列
-        self.__search = search(map=self.__path_map)
         self.PathPlanningProcess_InQueue = PathPlanningProcess_InQueue
         self.PathPlanningProcess_OutQueue = PathPlanningProcess_OutQueue
 
-        # 生成机器人随机位置
-        self.RobotCurrentPoint_pix, self.RobotCurrentPoint = self.__getRandomAgentLocation()
-        cv2.circle(self.Im, (self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1]), 10, (0, 0, 255), -1)
-        self.__show_pic(self.Im)
-
         # 初始化当前用户
         self.CurrentUser = self._Person['晨峻']
-        self.__RobotHead = "robot.png"
-        self.userhead.setPixmap(QPixmap.fromImage(self.CurrentUser['head_QImage']))
+        self.userhead.setPixmap(self.CurrentUser['head_QPixmap'])
 
         # 初始化动作扫描服务
         self.__moveTimer = QTimer(self)
@@ -141,13 +199,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.__moveSpeed = 5
         self.__waitForPathPlanning = False
         self.__moveTimer.start(self.__moveSpeed)
-
-        # map事件的用到的一些参数的初始化
-        self.map.start_pos = QPoint()
-        self.map.end_pos = QPoint()
-
-        self.map.mouseDown = False
-        # self.map_view = QGraphicsView(self.map)
 
         # 列表扫描服务
         if dialogue_list is not None:
@@ -158,11 +209,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
     def _Tag_location(self):
         self.window().setCursor(Qt.CrossCursor)
-        # self.window().mousePressEvent = self.window()._Tag_action_location_mousePressEvent
-        # self.window().map.mouseMoveEvent = self.window()._Tag_action_location_mousePressEvent
         self.map_view.mouseMoveEvent = self._Tag_action_location_mouseMoveEvent
+
     def _dialogue_list_deal(self):
+
         if self.dialogue_list:
+            print(1)
             dialogue = self.dialogue_list.pop(0)
             self.dealMessage(dialogue)
         else:
@@ -175,8 +227,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if event.button() == Qt.LeftButton:
             self.window().map.start_pos = event.pos()
             self.map.mouseDown = True
-        # x = event.pos().x()
-        # self.window()
 
     def _Tag_action_location_mouseMoveEvent(self, event: QMouseEvent):
         """
@@ -194,12 +244,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if self.window().map.mouseDown:
             self.window().map.end_pos = event.pos()
             self.self.window().map.mouseDown = False
-
-    def paint(self):
-        """
-        位置标注动作框选时的画框函数
-        """
-
 
     def __dealMessageShow(self, messageW: QNChatMessage, item: QListWidgetItem,
                           text: str, name: str, time: int, usertype: QNChatMessage.User_Type):
@@ -239,16 +283,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             messageTime.setText(str(curMsgTime), curMsgTime, "", size, QNChatMessage.User_Type.User_Time)
             self.listWidget.setItemWidget(itemTime, messageTime)
 
-    def __show_pic(self, cv2image) -> None:
-        """
-        私有化函数，进行地图图片的刷新
-        """
-        cv2image = cv2.resize(cv2image, (int(cv2image.shape[1] / 4) * 4, int(cv2image.shape[0] / 4) * 4),
-                              interpolation=cv2.INTER_CUBIC)
-        showImage = QImage(cv2image.data, cv2image.shape[1], cv2image.shape[0], cv2image.shape[1] * 3,
-                           QImage.Format.Format_RGB888)
-        self.map.setPixmap(QPixmap.fromImage(showImage))
-
     def UserTalk(self, message: str) -> None:
         """
         用户说话
@@ -259,7 +293,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         t = QDateTime.currentDateTime().toTime_t()
         self.__dealMessageTime(t)
         messageW = QNChatMessage(self.listWidget.parentWidget())
-        userHead = self.CurrentUser['head_QImage']
+        userHead = self.CurrentUser['head_QPixmap']
         messageW.setPixUser(userHead)
         item = QListWidgetItem(self.listWidget)
         self.__dealMessageShow(messageW, item, message, self.CurrentUser['name'], t, QNChatMessage.User_Type.User_She)
@@ -319,7 +353,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if currentUser == key:
                     self.CurrentUser = self._Person[key]
                     break
-            self.userhead.setPixmap(QPixmap.fromImage(self.CurrentUser['head_QImage']))
+            self.userhead.setPixmap(self.CurrentUser['head_QPixmap'])
         else:
             self.CurrentUser = user
             self.UserComboBox.setCurrentText(user['name'])
@@ -327,15 +361,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 if user['name'] == key:
                     self.CurrentUser = self._Person[key]
                     break
-            self.userhead.setPixmap(QPixmap.fromImage(self.CurrentUser['head_QImage']))
+            self.userhead.setPixmap(self.CurrentUser['head_QPixmap'])
 
     def __clearTrackFunction(self):
         """
         清除轨迹
         """
-        self.Im = cv2.imread('PathPlanningAstar/map.png')
-        cv2.circle(self.Im, (self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1]), 10, (0, 0, 255), -1)
-        self.__show_pic(self.Im)
+        self._map_scene_path.clear()
+        self._map_scene_path_item.setPath(self._map_scene_path)
+        self._map_scene_path.moveTo(self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1])
 
     def sendButtonFunction(self):
         """
@@ -354,6 +388,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         消息处理函数，主要对消息进行一些简单的处理
         """
+        print(2)
         if sentence == "":
             return
         else:
@@ -369,8 +404,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                 # 指令处理
                 sentence = sentence[sentence.index('@ Robot') + 7:]
                 self.dealInstruction(sentence)
-
-    # def _personCheck(self, input_item):
 
     def dealInstruction(self, sentence):
         """
@@ -476,25 +509,21 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         if self.__currentMovePath:  # 当路径序列不为空时执行当前路径
             self.RobotCurrentPoint_pix = self.__currentMovePath.pop(0)  # 读出路径序列第一个元素
-            print(self.RobotCurrentPoint_pix)
             self.RobotCurrentPoint_pix = [self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1]]  # 更新当前位置
-            cv2.circle(self.Im, (self.RobotCurrentPoint_pix[0],  # 画点
-                                 self.RobotCurrentPoint_pix[1]), 2, (0, 0, 213), -1)
-            self.__show_pic(self.Im)  # 刷新显示
+            self._map_scene_path.lineTo(self.RobotCurrentPoint_pix[0], self.RobotCurrentPoint_pix[1])
+            self._map_scene_path_item.setPath(self._map_scene_path)
+            self.map_scene_robot_item.setPos(self.RobotCurrentPoint_pix[0] - int(self._robot.width() / 2),
+                                             self.RobotCurrentPoint_pix[1] - int(self._robot.height() / 2))
+            self.map_view_real.centerOn(self.map_scene_robot_item)
         elif self.__waitForPathPlanning:
+            self.__moveTimer.setInterval(self.__moveSpeed)
             if not self.PathPlanningProcess_OutQueue.empty():
                 self.__currentMovePath = self.PathPlanningProcess_OutQueue.get()
                 self.__clearTrackFunction()
-                # QThread.msleep(waitTime)  # 等待时间
                 self.RobotTargetPoint_pix = [self.__currentMovePath[-1][0], self.__currentMovePath[-1][1]]  # 更新当前目标点
-                cv2.circle(self.Im, (self.RobotTargetPoint_pix[0], self.RobotTargetPoint_pix[1]),  # 在地图上标出目标点
-                           10, (255, 0, 0), -1)
-                self.__show_pic(self.Im)  # 刷新显示
                 self.__waitForPathPlanning = False
         else:  # 当路径列表读空之后，扫描动作序列
             if self.__moveSequence:  # 当动作序列不为空时
-                # self.__moveTimer.stop()  # 先暂停扫描函数的触发
-                # print("MoveSequence pop")
                 waitTime, [goalX, goalY], name = self.__moveSequence.pop(0)  # 读出动作序列第一个元素
                 goalX, goalY = world_to_pixel((goalX, goalY))
                 self.PathPlanningProcess_InQueue.put([self.RobotCurrentPoint_pix[0],
@@ -503,7 +532,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                                       goalY])
                 self.logInfo("Current goal: " + name)
                 self.__waitForPathPlanning = True
-                # self.__moveTimer.start(self.__moveSpeed)  # 重启扫描
+                self.__moveTimer.setInterval(waitTime)
 
     def __getRandomAgentLocation(self) -> [[int, int], [int, int]]:
         """
@@ -511,11 +540,11 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         :return: pixle_point-像素坐标，point-世界坐标
         """
-        map = self.__path_map.grid_map
+        map = Map("PathPlanningAstar/middle.png").grid_map
         while True:
             point = (random.choice(range(-80, 80)), random.choice(range(-80, 80)))
             pixle_point = world_to_pixel(world_points=point)
-            if 0 <= pixle_point[0] < 1883 and 0 <= pixle_point[1] < 533:
+            if 0 <= pixle_point[0] < len(map) and 0 <= pixle_point[1] < len(map[0]):
                 false_flag = False
                 for i in range(-2, 2, 2):
                     for j in range(-2, 2, 2):
@@ -528,14 +557,12 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     break
         return pixle_point, point
 
-
 def PathPlanningProcess(qi: multiprocessing.Queue, qo: multiprocessing.Queue):
     path_map = Map("PathPlanningAstar/middle.png")
     s = search(map=path_map)
     while True:
         if not qi.empty():
             start_x, start_y, goal_x, goal_y = qi.get()
-            print((start_x, start_y), (goal_x, goal_y))
             path = s.make_path((start_x, start_y), (goal_x, goal_y))
             qo.put(path)
 
@@ -602,7 +629,7 @@ def main():
         PathPlanningProcess_OutQueue))
     _PathPlanning_process.start()
 
-    app = QApplication(sys.argv)
+    app = QApplication(sys.argv)  # app应用程序对象,在Qt中，应用程序对象有且仅有一个
     window = MainWindow(InstructionPrediction_InQueue,
                         InstructionPrediction_OutQueue,
                         TimeSpaceGraph_InQueue,
@@ -610,10 +637,11 @@ def main():
                         PathPlanningProcess_InQueue,
                         PathPlanningProcess_OutQueue,
                         dialogue_list=dialogue_list)
-    window.show()
+
+    window.showFullScreen()  # 窗口对象默认不会显示，必须调用show方法显示窗口
 
     sys.exit([app.exec_(), _TimeSpaceGraph_process.terminate(), _InstructionPrediction_process.terminate(),
-              _PathPlanning_process.terminate()])
+              _PathPlanning_process.terminate()])  # 让应用程序对象进入消息死循环, 让代码阻塞到此行
 
 
 if __name__ == '__main__':

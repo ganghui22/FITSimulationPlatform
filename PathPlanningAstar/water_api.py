@@ -70,7 +70,7 @@ def map_dealing(map_path: str) -> None:
             if labels[x, y] == max2_index:
                 map_connectedcomponents[x, y] = 255
             else:
-                map_connectedcomponents[x, y] = 0
+                map_connectedcomponents[x, y] = 204
     for x in range(width):
         for y in range(high):
             if map_origin[x, y] == 0:
@@ -81,9 +81,10 @@ def map_dealing(map_path: str) -> None:
             if map_binary[x, y] == 204:
                 map_binary[x, y] = 0
     contours, hierarchy = cv2.findContours(map_binary, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
-    cv2.drawContours(map_connectedcomponents, contours, -1, 0, 1)
+    cv2.drawContours(map_connectedcomponents, contours, -1, 0, 2)
     map_name = map_path.split('.')
     cv2.imwrite(map_name[0] + 'Dealing' + '.png', map_connectedcomponents)
+
 
 def map_track_middle(map_path: str) -> None:
     map_origin = cv2.imread(map_path, cv2.IMREAD_GRAYSCALE)
@@ -122,6 +123,8 @@ def map_track_middle(map_path: str) -> None:
     cv2.drawContours(map_connectedcomponents, contours, -1, 0, 12)
     map_name = map_path.split('.')
     cv2.imwrite('middle' + '.png', map_connectedcomponents)
+
+
 # 类定义
 class WaterApi:
     def __init__(self, host: str, port: int) -> None:
@@ -400,8 +403,8 @@ def huatu(curr, origin_x, origin_y, height, width, resolution):
 
 
 if __name__ == "__main__":
-    # map_dealing('/home/llj/PathPlanningAstar/fit4_5.png')
-    map_track_middle('map.png')
+    map_dealing('fit4_5.png')
+    # map_track_middle('map.png')
     # main()
     # api = WaterApi("192.168.10.10", 31001)
     # print(api.get_map_info())

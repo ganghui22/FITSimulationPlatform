@@ -37,6 +37,7 @@ class search():
         self.search = AStar()
 
     def make_path(self, start, goal):
+
         self.reint()
         self.start = start
         self.goal = goal
@@ -68,5 +69,5 @@ if __name__ == '__main__':
     a = search(map=path_map)
     print(a.make_path(start=(1367, 177), goal=(1450, 137)))
     # a=search(map=path_map)
-    print(1)
-    print(a.make_path(start=(1450, 137), goal=(1367, 177)))
+    # print(1)
+    # print(a.make_path(start=(1450, 137), goal=(1367, 177)))
