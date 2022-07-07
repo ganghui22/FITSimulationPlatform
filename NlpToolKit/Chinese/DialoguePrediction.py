@@ -91,7 +91,8 @@ class DialoguePrediction:
                                 object = ''.join([self.vocab[i] for i in index])
                                 predicate = self.id2predicate[str(predicate1)]
                                 # print(object, '\t', predicate)
-                                spo.append([subject, predicate, object])
+                                spo.append([subject.replace("##", ''), predicate.replace("##", ''),
+                                            object.replace("##", '')])
         # print(spo)
         # 预测结果
         R = set([SPO(_spo) for _spo in spo])

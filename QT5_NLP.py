@@ -44,7 +44,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
 
         # 加载机器人头像
         self._robot = QPixmap("ProfilePicture/robot.png") \
-            .scaled(60, 60, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
+            .scaled(50, 50, Qt.IgnoreAspectRatio, Qt.SmoothTransformation)
 
         # 设置全屏显示
         self.setGeometry(self.centralwidget.x() + 0, self.centralwidget.height() + 0, desktop_w, desktop_h)
@@ -85,7 +85,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self._map_scene_path_item.setPen(path_pen)
         # 设置路径的图层为1
         self._map_scene_path_item.setZValue(1)
-        self.actionTag_location.triggered.connect(self._Tag_location)
 
         # 布局设计
         # 全局小地图大小和位置设置
@@ -107,7 +106,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                     int(4 * self.centralwidget.height() / 5))
         # 用户选择框大小及位置设置
         self.UserComboBox.move(self.listWidget.x(), self.listWidget.y() + self.listWidget.height() + 10)
-        self.UserComboBox.setFixedWidth(int(self.listWidget.width() / 4) - 10) # 聊天框的五分之一减去10
+        self.UserComboBox.setFixedWidth(int(self.listWidget.width() / 4) - 10)  # 聊天框的五分之一减去10
         self.UserComboBox.setFixedHeight(self.centralwidget.height() - self.listWidget.height() - \
                                          self.UserComboBox.width() - 10 - 10 - 10)
         # 用户头像框大小及位置设置
@@ -124,14 +123,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.Send_Button.move(self.chat_text.x() + self.chat_text.width() - self.Send_Button.width() - 5,
                               self.chat_text.y() + self.chat_text.height() - self.Send_Button.height() - 5)
         # 清空按钮的大小及位置设置
-        self.cleartrackbutton.move(self.map_view_mini.x(), self.map_view_mini.y()+self.map_view_mini.height()+10)
-        self.cleartrackbutton.setFixedWidth(self.map_view_mini.width()+self.map_view_real.width())
+        self.cleartrackbutton.move(self.map_view_mini.x(), self.map_view_mini.y() + self.map_view_mini.height() + 10)
+        self.cleartrackbutton.setFixedWidth(self.map_view_mini.width() + self.map_view_real.width())
 
         # 信息打印窗口大小及位置设置
-        self.chat_interface.setFixedHeight(int(self.centralwidget.height()-self.map_view_real.height()-20))
-        self.chat_interface.setFixedWidth(int(self.centralwidget.width()/4 - 20))
+        self.chat_interface.setFixedHeight(int(self.centralwidget.height() - self.map_view_real.height() - 20))
+        self.chat_interface.setFixedWidth(int(self.centralwidget.width() / 4 - 20))
         self.chat_interface.move(self.map_view_real.x() + self.map_view_real.width() + 10,
                                  self.map_view_real.y())
+
         # 加载地点列表
         with open('data/Location_list.json', 'r', encoding='utf-8') as f:
             self._location_list = json.load(f)
@@ -144,7 +144,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         for u in unk_head_rgb_permutation:
             first, second, third = u
             uu = cv2.merge([first, second, third, a])
-            q_uu = QPixmap.fromImage(QImage(uu.data, uu.shape[1], uu.shape[0], uu.shape[1] * 3,
+            q_uu = QPixmap.fromImage(QImage(uu.data, uu.shape[1], uu.shape[0], uu.shape[1] * 4,
                                             QImage.Format.Format_RGBA8888))
             unk_head_permutation.append(q_uu)
 
@@ -161,6 +161,15 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         self.Send_Button.clicked.connect(self.sendButtonFunction)
         self.UserComboBox.currentIndexChanged.connect(self.__userChanged)
         self.cleartrackbutton.clicked.connect(self.__clearTrackFunction)
+
+        # 向statusbar添加map_view_real的信息打印
+        self.map_view_real_status = QLabel()
+        self.statusbar.addWidget(self.map_view_real_status)
+
+        # 重写map_view_real 的mouseMoveEvent函数
+        self.map_view_real.mouseMoveEvent = self._map_view_real_mouseMoveEvent
+        # 打开map_view_real 的鼠标跟踪功能
+        self.map_view_real.setMouseTracking(True)
 
         # 一些Qt组件的属性设置
         self.userhead.setScaledContents(True)
@@ -196,7 +205,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # 初始化动作扫描服务
         self.__moveTimer = QTimer(self)
         self.__moveTimer.timeout.connect(self.__moveScanf)
-        self.__moveSpeed = 5
+        self.__moveSpeed = 10
         self.__waitForPathPlanning = False
         self.__moveTimer.start(self.__moveSpeed)
 
@@ -207,14 +216,28 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             self.dialogue_list_deal_timer.timeout.connect(self._dialogue_list_deal)
             self.dialogue_list_deal_timer.start(2000)
 
+        self.actionTag_location.setCheckable(True)
+        self.action_exit.triggered.connect(self.action_exit_fun)
+
+    def action_exit_fun(self):
+        if QMessageBox(QMessageBox.Icon.Question, "确认退出", "是否退应用程序？",
+                       QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No) \
+                .exec_() == QMessageBox.StandardButton.Yes:
+            self.close()
+
+    def _map_view_real_mouseMoveEvent(self, event: QMouseEvent):
+        view_pos = event.pos()
+        scene_pos = self.map_view_real.mapToScene(view_pos)
+        self.window().map_view_real_status.setText("<font color='red'>X</font>:<font color='blue'>{}</font>, "
+                                                   "<font color='red'>Y</font>:<font color='blue'>{}</font>"
+                                                   .format(scene_pos.x(), scene_pos.y()))
+
     def _Tag_location(self):
         self.window().setCursor(Qt.CrossCursor)
         self.map_view.mouseMoveEvent = self._Tag_action_location_mouseMoveEvent
 
     def _dialogue_list_deal(self):
-
         if self.dialogue_list:
-            print(1)
             dialogue = self.dialogue_list.pop(0)
             self.dealMessage(dialogue)
         else:
@@ -277,7 +300,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if isShowTime:
             messageTime = QNChatMessage(self.listWidget.parentWidget())
             itemTime = QListWidgetItem(self.listWidget)
-            size = QSize(self.width(), 40)
+            size = QSize(self.listWidget.width(), 40)
             messageTime.resize(size)
             itemTime.setSizeHint(size)
             messageTime.setText(str(curMsgTime), curMsgTime, "", size, QNChatMessage.User_Type.User_Time)
@@ -388,7 +411,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         """
         消息处理函数，主要对消息进行一些简单的处理
         """
-        print(2)
         if sentence == "":
             return
         else:
@@ -557,6 +579,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                     break
         return pixle_point, point
 
+
 def PathPlanningProcess(qi: multiprocessing.Queue, qo: multiprocessing.Queue):
     path_map = Map("PathPlanningAstar/middle.png")
     s = search(map=path_map)
@@ -590,16 +613,11 @@ def InstructionPrediction_process(qi: multiprocessing.Queue, qo: multiprocessing
 
 def main():
     dialogue_list = None
-    dialogue_list = ['刘老师:大家上午8点15分到1号会议室开会',
-                     '兰军:收到',
-                     '港晖:老师，我8点15分要去1001教室上课，能不能换个时间？',
-                     '刘老师:那我们就换到9点吧',
-                     '晨峻:收到',
-                     '兴航:收到',
-                     '姚峰:收到',
-                     '港晖:收到',
-                     '小飞:收到',
-                     '晨峻:@ Robot从港晖那拿份文件给兰军'
+    dialogue_list = ['刘老师:该赶我们的进度了，下午2点钟在1号会议室碰一下怎么样？',
+                     '港晖:抱歉，老师，我参加不了，我下午2点要在Room511开个线上的会议',
+                     '刘老师:好，其他人呢？',
+                     '兰军:我准时到',
+                     '小飞:我没问题'
                      ]
 
     # 指令解析服务的进程通信队列
@@ -614,19 +632,19 @@ def main():
     # 指令解析服务的进程启动
     _InstructionPrediction_process = Process(target=InstructionPrediction_process, args=(
         InstructionPrediction_InQueue,
-        InstructionPrediction_OutQueue))
+        InstructionPrediction_OutQueue), daemon=True)
     _InstructionPrediction_process.start()
 
     # 时空图谱服务的进程启动
     _TimeSpaceGraph_process = Process(target=TimeSpaceGraph_process, args=(
         TimeSpaceGraph_InQueue,
-        TimeSpaceGraph_OutQueue))
+        TimeSpaceGraph_OutQueue), daemon=True)
     _TimeSpaceGraph_process.start()
 
     # 地图路径规划进程启动
     _PathPlanning_process = Process(target=PathPlanningProcess, args=(
         PathPlanningProcess_InQueue,
-        PathPlanningProcess_OutQueue))
+        PathPlanningProcess_OutQueue), daemon=True)
     _PathPlanning_process.start()
 
     app = QApplication(sys.argv)  # app应用程序对象,在Qt中，应用程序对象有且仅有一个
@@ -640,8 +658,7 @@ def main():
 
     window.showFullScreen()  # 窗口对象默认不会显示，必须调用show方法显示窗口
 
-    sys.exit([app.exec_(), _TimeSpaceGraph_process.terminate(), _InstructionPrediction_process.terminate(),
-              _PathPlanning_process.terminate()])  # 让应用程序对象进入消息死循环, 让代码阻塞到此行
+    sys.exit(app.exec_())  # 让应用程序对象进入消息死循环, 让代码阻塞到此行
 
 
 if __name__ == '__main__':
