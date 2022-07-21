@@ -283,6 +283,7 @@ color: rgb(37, 194, 118);</string>
      <string>File</string>
     </property>
     <addaction name="action_open_map"/>
+    <addaction name="actionsave_Tag_Location"/>
     <addaction name="action_exit"/>
    </widget>
    <widget class="QMenu" name="menuTool">
@@ -314,6 +315,11 @@ color: rgb(37, 194, 118);</string>
   <action name="actionadd_preson">
    <property name="text">
     <string>add_preson</string>
+   </property>
+  </action>
+  <action name="actionsave_Tag_Location">
+   <property name="text">
+    <string>save_Tag_Location</string>
    </property>
   </action>
  </widget>
