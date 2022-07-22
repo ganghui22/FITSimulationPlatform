@@ -1,4 +1,5 @@
 # -*-coding:utf-8-*-
+import multiprocessing
 import random
 
 import numpy
@@ -17,21 +18,21 @@ from PIL import Image
 import matplotlib
 import json
 
-location = ['Room510', 'Room511', 'Room512', 'Room513', 'Room514', 'Room515', 'Room516']
+location = ['room510', 'room511', 'room512', 'room513', 'room514', 'room515', 'room516']
 other_location = ['1号会议室', '2号会议室', '休息室', '茶水间', '1001教室', '1002教室', '1003教室', '讨论区', '其他']
 
 
-def mark_location():
-    import numpy as np
-    location_list = {'elevator_1': (14.30, -51.42), 'elevator_2': (10.10, -3.37), '文栋': (81.05, 13.98),
-                     'meeting': (74.90, 10.18), '刘老师': (69.55, -69.32)}
-    src = cv2.imread('./PathPlanningAstar/fit4_5Dealing_draw.png')
-    for key, value in location_list.items():
-        text = key
-        cv2.putText(src, text, world_to_pixel(world_points=(value[0], value[1] - 5), image_size=(2309, 2034)),
-                    cv2.FONT_HERSHEY_COMPLEX, 1.0, (0, 0, 255), 2)
-        cv2.circle(src, world_to_pixel(world_points=(value[0], value[1]), image_size=(2309, 2034)), 5, (0, 0, 255), -1)
-    cv2.imwrite('./result_mark.png', src)
+# def mark_location():
+#     import numpy as np
+#     location_list = {'elevator_1': (14.30, -51.42), 'elevator_2': (10.10, -3.37), '文栋': (81.05, 13.98),
+#                      'meeting': (74.90, 10.18), '刘老师': (69.55, -69.32)}
+#     src = cv2.imread('./PathPlanningAstar/fit4_5Dealing_draw.png')
+#     for key, value in location_list.items():
+#         text = key
+#         cv2.putText(src, text, world_to_pixel(world_points=(value[0], value[1] - 5), image_size=(2309, 2034)),
+#                     cv2.FONT_HERSHEY_COMPLEX, 1.0, (0, 0, 255), 2)
+#         cv2.circle(src, world_to_pixel(world_points=(value[0], value[1]), image_size=(2309, 2034)), 5, (0, 0, 255), -1)
+#     cv2.imwrite('./result_mark.png', src)
 
 
 class MyEncoder(json.JSONEncoder):
@@ -44,8 +45,25 @@ class MyEncoder(json.JSONEncoder):
             return obj.tolist()
         elif isinstance(obj, set):
             return list(obj)
+def timetostamp(tss1):
+    timeArray = time.strptime(tss1, "%Y-%m-%d %H:%M:%S")
+    timeStamp = int(time.mktime(timeArray))
+    return timeStamp
 
 
+def stamptotime(stamp):
+    timeArray = time.localtime(stamp)
+    otherStyleTime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
+    return otherStyleTime
+
+def cal_time(a, total_time, u, sigma, t_th):
+    a = a
+    x = np.linspace(0, total_time, total_time)
+    u = u
+    sigma = sigma
+    l = skewnorm.pdf(x, a, u, sigma)
+    # print(l[t_th])
+    return l[t_th]
 class Graph():
     def __init__(self):
         self.person = ['港晖', '晨峻', '伟华', '刘老师', '袁老师', '刘毅', '姚峰', '侯煊', '小飞', '郝伟', '海洋', '春秋', '靖宇', '兴航', '文栋', '兰军',
@@ -155,11 +173,20 @@ class update():
     def __init__(self):
         self.total_time_o = 0
         self.time = time.asctime(time.localtime(time.time()))
-        self.time_propity = {'1号会议室': 30, '休息室': 50, '其他': 30}
         self.messege = None
         self.waiting_update = []
-        with open('Graph/Graph.json', 'r', encoding='utf-8') as load_f:
-            self.graph_rel = json.load(load_f)
+        with open('data/Person.json', 'r', encoding='utf-8') as f:
+            self.ppp = json.load(f)
+        # with open('Graph/Graph.json', 'r', encoding='utf-8') as load_f:
+        #     self.graph_rel = json.load(load_f)
+        self.teacher=['刘华平','刘老师']
+        self.graph_rel = {}
+        for p in self.ppp:
+            self.graph_rel[p] = {}
+            self.graph_rel[p]["rel_base"] = [self.ppp[p]["name"], self.ppp[p]["position"], 1]
+            self.graph_rel[p]["rel_now"] = None
+
+
         self.need_update = {}
         today_time = time.localtime(time.time())
         self.now_time = timetostamp(f"{today_time.tm_year}-{today_time.tm_mon}-{today_time.tm_mday} 08:00:00")
@@ -167,28 +194,14 @@ class update():
         self.sigma = 100  # 影响最大的可能性---可能性可以乘上sigma
         self.u = 100  # 影响最左边的值
         self.a_time = 10  # 影响左边下降的梯度
-        self.person = ['港晖', '晨峻', '伟华', '刘老师', '袁老师', '刘毅', '姚峰', '侯煊', '小飞', '郝伟', '海洋', '春秋', '靖宇', '兴航', '文栋', '兰军',
-                       '李老师', '馨竹']
+        self.person = [p for p in self.ppp]
+
         self.if_need_change = 0
         self.tmp_graph = {}
         self.event = {}
         self.image=None
 
     def receive_messege(self, triple, text):
-        # for i in messege:
-        # 	self.triple=i['label']
-        # 	self.text=i['dialogue']
-        # 	self.tmp_dynamic_time_graph()
-        # messege=[{'dialogue':'刘老师:大家上午8点10分到1号会议室开会','label':[['大家','1号会议室','8点10分']]},
-        #          {'dialogue':'兰军:收到','label':[]},
-        #          {'dialogue':'港晖:8点10分我要去1001教室上课，能不能换个时间？','label':[['港晖','1001教室','8点10分']]},
-        #          {'dialogue':'刘老师:那我们就换到8点40分吧','label':[['我们','','8点40分']]},
-        #          {'dialogue':'晨峻:收到','label':[]},
-        #          {'dialogue':'港晖:收到','label':[]}]
-        # for i in messege:
-        # 	self.triple = i['label']
-        # 	self.text=i['dialogue']
-        # 	self.tmp_dynamic_time_graph()
         self.triple = triple
         self.text = text
         self.tmp_dynamic_time_graph()
@@ -201,6 +214,7 @@ class update():
 
         tmp_graph = self.tmp_graph.copy()
         for time_dy, messege in tmp_graph.items():
+
             if self.now_time >= timetostamp(time_dy):
                 time.sleep(0.0001)
                 # print(stamptotime(self.now_time),time_dy)
@@ -232,8 +246,7 @@ class update():
                             self.need_update[ch_person] = [ch_person, ch_location, person_event[0][2]]
                     del tmp1[person_name][num]
                     self.event = tmp1
-        # print('============rel====================\n',self.graph_rel['港晖'])
-
+        # print('============rel====================\n',self.need_update)
     def tmp_dynamic_time_graph(self):  # single text
         self.need_update = {}  # 指的是需要进一步继续时空概率推断的关系
         for i in ['那我们就换', '那我们换',
@@ -247,94 +260,128 @@ class update():
             self.if_need_change = 0
         self.initiator = self.text.split(':')
         self.initiator = self.initiator[0]  # 事件的发起者
+        #修改名字不一样的地方，
+        self.initiator=self.normalize_name(self.initiator)
+
+
         if self.initiator not in self.event:
             self.event[self.initiator] = []
         self.per_event = []
 
         if self.if_need_change == 0:  # 发起者发起的新事件，进行事件记录
-            if self.event[self.initiator] != []:
-                time_signal = self.event[self.initiator][0][0][2]
-                # print(self.event[self.initiator][0])
-                if time_signal not in self.tmp_graph:
-                    self.tmp_graph[time_signal] = []
-                self.tmp_graph[time_signal].append(self.event[self.initiator][0])
-                del self.event[self.initiator][0]
-            total_person_flag = 0
 
-            for value in self.triple:
-                if value[1] != '' and value[1] in self.person:  # 当地点是人的时候，对应这个人的办公室
-                    value[1] = self.graph_rel[value[1]]['rel_base'][1]
+            try:
+                if self.event[self.initiator] != []:
+                    time_signal = self.event[self.initiator][0][0][2]
+                    # print(self.event[self.initiator][0])
+                    if time_signal not in self.tmp_graph:
+                        self.tmp_graph[time_signal] = []
+                    self.tmp_graph[time_signal].append(self.event[self.initiator][0])
+                    del self.event[self.initiator][0]
+                total_person_flag = 0
 
-                if value[1] != '' and '的办公室' in value[1]:
-                    value[1] = value[1].split('的办公室')[0]
-                    value[1] = self.graph_rel[value[1]]['rel_base'][1]
+                for value in self.triple:
+                    value[0]=self.normalize_name(value[0])
+                    value[1]=self.normalize_location(value[1])
+                    if value[1] != '' and value[1] in self.person:  # 当地点是人的时候，对应这个人的办公室
+                        value[1] = self.graph_rel[value[1]]['rel_base'][1]
 
-                if value[2] != '':
-                    value[2] = get_time(value[2])
-                if value[1]!='' and value[2]!='':
-                    self.per_event.append([value[0], value[1], value[2]])
-                # print(self.per_event)
-                    if value[0] in ['我们', '大家', '咱们', '全体员工', '所有人']:
-                        total_person_flag = 1
+                    if value[1] != '' and '的办公室' in value[1]:
+                        value[1] = value[1].split('的办公室')[0]
+                        value[1] = self.graph_rel[value[1]]['rel_base'][1]
 
-            if total_person_flag == 1:  # 把我们更换成人名
-                event_time = value[2]
-                event_location = value[1]
-                self.per_event = []
-                for i in self.person:
-                    self.per_event.append([i, event_location, event_time])
-            if self.triple != [] and self.per_event!=[]:
-                self.event[self.initiator].append(self.per_event)
+                    if value[2] != '':
+
+                            value[2] = self.get_time(value[2])
+
+
+                    if value[1]!='' and value[2]!='':
+                        self.per_event.append([value[0], value[1], value[2]])
+                    # print(self.per_event)
+                        if value[0] in ['我们', '大家', '咱们', '全体员工', '所有人']:
+                            total_person_flag = 1
+
+                if total_person_flag == 1:  # 把我们更换成人名
+                    event_time = value[2]
+                    event_location = value[1]
+                    self.per_event = []
+                    for i in self.person:
+                        self.per_event.append([i, event_location, event_time])
+                if self.triple != [] and self.per_event!=[]:
+                    self.event[self.initiator].append(self.per_event)
+            except:
+                print('-------can not record the triple, drop out!!!!--------')
 
         # 由于是新的时间，所以把之前的存在的事件就默认已经确定不变，放在self.tmp_graph中，
 
 
         elif self.if_need_change == 1:  # 那就xxx
-            for value in self.triple:
-                self.per_event = []
-                if value[1] != '' and value[1] in self.person:  # 当地点是人的时候，对应这个人的办公室
-                    value[1] = self.graph_rel[value[1]]['rel_base'][1]
+            try:
+                for value in self.triple:
+                    value[0]=self.normalize_name[value[0]]
+                    value[1]=self.normalize_location(value[1])
 
-                if value[1] != '' and '的办公室' in value[1]:
-                    value[1] = value[1].split('的办公室')[0]
-                    value[1] = self.graph_rel[value[1]]['rel_base'][1]
+                    self.per_event = []
+                    if value[1] != '' and value[1] in self.person:  # 当地点是人的时候，对应这个人的办公室
+                        value[1] = self.graph_rel[value[1]]['rel_base'][1]
 
-                if value[2]!='':
-                    value[2] = get_time(value[2])
+                    if value[1] != '' and '的办公室' in value[1]:
+                        value[1] = value[1].split('的办公室')[0]
+                        value[1] = self.graph_rel[value[1]]['rel_base'][1]
 
-                # 时间地点都有
-                if value[2] != '' and value[1] != '':
-                    for per in self.event[self.initiator][0]:
-                        per[1] = value[1]
-                        per[2] = value[2]
-                        self.per_event.append(per)
-                # 地点需要更新
-                if value[2] == '' and value[1] != '':
-                    for per in self.event[self.initiator][0]:
-                        per[1] = value[1]
-                        self.per_event.append(per)
+                    if value[2]!='':
+                        value[2] = self.get_time(value[2])
 
-                # 时间需要更新
-                if value[2] != '' and value[1] == '':
-                    for per in self.event[self.initiator][0]:
-                        per[2] = value[2]
-                        self.per_event.append(per)
-            self.event[self.initiator].append(self.per_event)
-            time_signal = self.event[self.initiator][0][0][2]
-            if time_signal not in self.tmp_graph:
-                self.tmp_graph[time_signal] = []
-            self.tmp_graph[time_signal].append(self.event[self.initiator][0])
-            del self.event[self.initiator][0]
+                    # 时间地点都有
+                    if value[2] != '' and value[1] != '':
+                        for per in self.event[self.initiator][0]:
+                            per[1] = value[1]
+                            per[2] = value[2]
+                            self.per_event.append(per)
+                    # 地点需要更新
+                    if value[2] == '' and value[1] != '':
+                        for per in self.event[self.initiator][0]:
+                            per[1] = value[1]
+                            self.per_event.append(per)
+
+                    # 时间需要更新
+                    if value[2] != '' and value[1] == '':
+                        for per in self.event[self.initiator][0]:
+                            per[2] = value[2]
+                            self.per_event.append(per)
+                self.event[self.initiator].append(self.per_event)
+                time_signal = self.event[self.initiator][0][0][2]
+                if time_signal not in self.tmp_graph:
+                    self.tmp_graph[time_signal] = []
+                self.tmp_graph[time_signal].append(self.event[self.initiator][0])
+                del self.event[self.initiator][0]
+            except:
+                print('---------------can not change the time or location!!!!!---------------------')
         time.sleep(0.01)
 
-    # print('===tmp_graph======',self.tmp_graph)
+    def normalize_name(self,m):
+        for p in self.ppp:
+            if p in m:
+                m=p
+                break
+        for t in self.teacher:
+            if t==m:
+                m='刘老师'
+                break
+        return m
+    def normalize_location(self,l):
+        for j in location:
+            if l in j :
+                l=j
+                break
+        return l
     # print('====event=========',self.event)
 
     def update_auto(self):  # 自动的改变
-        self.a = Graph()
+        # self.a = Graph()
         # img = cv2.imread('Graph/graph_update.png')
         while 1:
-            time.sleep(0.5)
+            # self.now_time = timetostamp(time.strftime("%Y-%m-%d %H:%M:%S"))
             self.update_rel()
             '''按照时间函数更新'''
             # img = plt.imread('Graph/graph_update.png')
@@ -348,6 +395,7 @@ class update():
                     self.sigma = 1000
                     self.total_time_o = 60 * 60
                 # 更新可能性
+
                 time_err = self.now_time - timetostamp(info[2])
                 if time_err < self.total_time_o:
                     tmp_possibillity = cal_time(self.a_time, self.total_time_o, self.u, self.sigma,
@@ -361,29 +409,68 @@ class update():
                     del m[k]
                     info_detail = '{} come back to office!!!'.format(info[0])
             self.need_update = m
+            # print(self.graph_rel['港晖'])
+
             # print(self.graph_rel)
-            self.image=self.a.draw(self.graph_rel)
-            time.sleep(0.1)
+            # self.image=self.a.draw(self.graph_rel)
+            # time.sleep(0.1)
             # cv2.putText(image, stamptotime(self.now_time), (200, 90), cv2.FONT_HERSHEY_COMPLEX, 2.0, (100, 200, 200),
             #             2)
             # cv2.imshow('graph', image)
             #
             # if cv2.waitKey(1) & 0xFF == ord('q'):
             #     break
-            self.now_time += 60
+            # self.now_time += 60
 
+    def simulate_time(self,m):
+        if m==True:
+            while 1:
+                self.now_time=timetostamp(time.strftime("%Y-%m-%d %H:%M:%S"))
+                time.sleep(0.5)
+        else:
+            while 1:
+                time.sleep(1)
+                self.now_time+=60
 
+    def get_time(self,detail):
+        if '分钟后' in detail:
+            detail_time=detail.split('分',1)
+            start_time=stamptotime(self.now_time+detail_time[0]*60)
 
+        else:
+            for i in self.mohu:
+                if i in detail:
+                    start_time=stamptotime(self.now_time+10*60)
+                    return start_time
+            today_time = time.localtime(time.time())
+            today = f"{today_time.tm_year}-{today_time.tm_mon}-{today_time.tm_mday} 00:00:00"
+            today = timetostamp(today)
+            add_flag = 0
+            evening = 0
+            if '半' in detail:
+                detail = detail.replace('半', '30分')
+            if '明天' in detail:
+                detail = detail[2:]
+                add_flag = 1
+            if '下午' in detail:
+                evening = 1
+                detail = detail[2:]
+            if '上午' in detail:
+                detail = detail[2:]
+            split_time = detail.split('点', 1)
+            hours = int(split_time[0])
+            if evening == 1 and hours <= 12:
+                hours += 12
+            if '分' in split_time[1]:
+                minutes = int(split_time[1].split('分', 1)[0])
+            else:
+                minutes = 0
 
-def cal_time(a, total_time, u, sigma, t_th):
-    a = a
-    x = np.linspace(0, total_time, total_time)
-    u = u
-    sigma = sigma
-    l = skewnorm.pdf(x, a, u, sigma)
-    # print(l[t_th])
-    return l[t_th]
-
+            stamp_time = add_flag * 24 * 60 * 60 + hours * 60 * 60 + minutes * 60
+            start_time_stamp = stamp_time + today
+            start_time = stamptotime(start_time_stamp)
+        # print(start_time)
+        return start_time
 
 def init_graph(Person, Location):
     graph = {}
@@ -399,48 +486,7 @@ def init_graph(Person, Location):
     return graph
 
 
-def timetostamp(tss1):
-    timeArray = time.strptime(tss1, "%Y-%m-%d %H:%M:%S")
-    timeStamp = int(time.mktime(timeArray))
-    return timeStamp
 
-
-def stamptotime(stamp):
-    timeArray = time.localtime(stamp)
-    otherStyleTime = time.strftime("%Y-%m-%d %H:%M:%S", timeArray)
-    return otherStyleTime
-
-
-def get_time(detail):
-    today_time = time.localtime(time.time())
-    today = f"{today_time.tm_year}-{today_time.tm_mon}-{today_time.tm_mday} 00:00:00"
-    today = timetostamp(today)
-    add_flag = 0
-    evening = 0
-    if '半' in detail:
-        detail = detail.replace('半', '30分')
-    if '明天' in detail:
-        detail = detail[2:]
-        add_flag = 1
-    if '下午' in detail:
-        evening = 1
-        detail = detail[2:]
-    if '上午' in detail:
-        detail = detail[2:]
-    split_time = detail.split('点', 1)
-    hours = int(split_time[0])
-    if evening == 1 and hours <= 12:
-        hours += 12
-    if '分' in split_time[1]:
-        minutes = int(split_time[1].split('分', 1)[0])
-    else:
-        minutes = 0
-
-    stamp_time = add_flag * 24 * 60 * 60 + hours * 60 * 60 + minutes * 60
-    start_time_stamp = stamp_time + today
-    start_time = stamptotime(start_time_stamp)
-    # print(start_time)
-    return start_time
 
 
 if __name__ == '__main__':

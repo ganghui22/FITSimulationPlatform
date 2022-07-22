@@ -36,7 +36,7 @@ class DialoguePrediction:
         # 解析模型的载入
         self.device = torch.device('cpu')
         self.model: ObjectModel = torch.load(
-            'NlpToolKit/Chinese/model/graph_model.bin', map_location='cpu')
+            '/home/llj/FITSimulationPlatform/NlpToolKit/Chinese/graph_model.bin', map_location='cpu')
         self.model.eval()
 
         # tokenizer的载入，从bert中载入
@@ -91,8 +91,7 @@ class DialoguePrediction:
                                 object = ''.join([self.vocab[i] for i in index])
                                 predicate = self.id2predicate[str(predicate1)]
                                 # print(object, '\t', predicate)
-                                spo.append([subject.replace("##", ''), predicate.replace("##", ''),
-                                            object.replace("##", '')])
+                                spo.append([subject.replace("##", ''), predicate, object.replace("##", '')])
         # print(spo)
         # 预测结果
         R = set([SPO(_spo) for _spo in spo])
@@ -110,6 +109,12 @@ class DialoguePrediction:
                 if i[1] == '地点':
                     per_loc = i[2]
                     res[per_person][1] = per_loc
+            for m in ['我们', '大家', '咱们', '全体员工', '所有人']:
+                if m in res:
+                    tmp_res=res[m]
+                    res={}
+                    res[m]=tmp_res
+                    break
             for key, value in res.items():
                 triple.append(value)
         return triple
@@ -117,4 +122,4 @@ class DialoguePrediction:
 
 if __name__ == '__main__':
     dia = DialoguePrediction()
-    print(dia("我们下午两点去新东源吧"))
+    print(dia("我们2:30去518开会"))
