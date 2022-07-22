@@ -64,6 +64,29 @@ def cal_time(a, total_time, u, sigma, t_th):
     l = skewnorm.pdf(x, a, u, sigma)
     # print(l[t_th])
     return l[t_th]
+from scipy import stats
+def cal_time_zhishu(sigma,time_go,time):
+    '''
+    time is s
+    sigma is 参数、
+    一般在sigma以后，可能性降为0.5
+    '''
+    r = 1 / sigma
+    X = []
+    Y = []
+    for x in np.linspace(0, time_go, time_go):
+        if x == 0:
+            continue
+        #   p = r*math.e**(-r*x)  #直接用公式算
+        p = stats.expon.cdf(x, scale=1 / r)  # 用scipy.stats.expon工具算,注意这里scale参数是标准差
+        X.append(x)
+        Y.append(p)
+    Y=1-(Y - np.min(Y)) / (np.max(Y) - np.min(Y))  #
+    print(Y[time])
+
+
+
+
 class Graph():
     def __init__(self):
         self.person = ['港晖', '晨峻', '伟华', '刘老师', '袁老师', '刘毅', '姚峰', '侯煊', '小飞', '郝伟', '海洋', '春秋', '靖宇', '兴航', '文栋', '兰军',
@@ -249,6 +272,7 @@ class update():
         # print('============rel====================\n',self.need_update)
     def tmp_dynamic_time_graph(self):  # single text
         self.need_update = {}  # 指的是需要进一步继续时空概率推断的关系
+        self.if_need_change = 0
         for i in ['那我们就换', '那我们换',
                   '那咱们就换', '那咱们换',
                   '那咱们改', '那我们就改',
@@ -256,8 +280,6 @@ class update():
             if i in self.text:
                 self.if_need_change = 1
                 break
-        else:
-            self.if_need_change = 0
         self.initiator = self.text.split(':')
         self.initiator = self.initiator[0]  # 事件的发起者
         #修改名字不一样的地方，
@@ -269,7 +291,6 @@ class update():
         self.per_event = []
 
         if self.if_need_change == 0:  # 发起者发起的新事件，进行事件记录
-
             try:
                 if self.event[self.initiator] != []:
                     time_signal = self.event[self.initiator][0][0][2]
@@ -281,10 +302,15 @@ class update():
                 total_person_flag = 0
 
                 for value in self.triple:
+                    if value[1] == '你':#处理'找你'的情况
+                        value[1]=self.old_initiator
                     value[0]=self.normalize_name(value[0])
                     value[1]=self.normalize_location(value[1])
                     if value[1] != '' and value[1] in self.person:  # 当地点是人的时候，对应这个人的办公室
-                        value[1] = self.graph_rel[value[1]]['rel_base'][1]
+                        if self.graph_rel[value[1]]['rel_now'] != None:
+                            value[1]=self.graph_rel[value[1]]['rel_now'][1]
+                        else:
+                            value[1] = self.graph_rel[value[1]]['rel_base'][1]
 
                     if value[1] != '' and '的办公室' in value[1]:
                         value[1] = value[1].split('的办公室')[0]
@@ -357,7 +383,53 @@ class update():
                 del self.event[self.initiator][0]
             except:
                 print('---------------can not change the time or location!!!!!---------------------')
+        elif self.if_need_change==2:
+            try:
+                if self.event[self.initiator] != []:
+                    time_signal = self.event[self.initiator][0][0][2]
+                    # print(self.event[self.initiator][0])
+                    if time_signal not in self.tmp_graph:
+                        self.tmp_graph[time_signal] = []
+                    self.tmp_graph[time_signal].append(self.event[self.initiator][0])
+                    del self.event[self.initiator][0]
+                total_person_flag = 0
+                for value in self.triple:
+                    value[0] = self.normalize_name(value[0])
+                    value[1] = self.normalize_location(value[1])
+                    value[1]=self.old_initiator
+                    if value[1] != '' and value[1] in self.person:  # 当地点是人的时候，对应这个人的办公室
+                        if self.graph_rel[value[1]]['rel_now'] != None:
+                            value[1]=self.graph_rel[value[1]]['rel_now'][1]
+                        else:
+                            value[1] = self.graph_rel[value[1]]['rel_base'][1]
+                    if value[1] != '' and '的办公室' in value[1]:
+                        value[1] = value[1].split('的办公室')[0]
+                        value[1] = self.graph_rel[value[1]]['rel_base'][1]
+
+                    if value[2] != '':
+                        value[2] = self.get_time(value[2])
+
+                    if value[1] != '' and value[2] != '':
+                        self.per_event.append([value[0], value[1], value[2]])
+                        # print(self.per_event)
+                        if value[0] in ['我们', '大家', '咱们', '全体员工', '所有人']:
+                            total_person_flag = 1
+
+                if total_person_flag == 1:  # 把我们更换成人名
+                    event_time = value[2]
+                    event_location = value[1]
+                    self.per_event = []
+                    for i in self.person:
+                        self.per_event.append([i, event_location, event_time])
+                if self.triple != [] and self.per_event!=[]:
+                    self.event[self.initiator].append(self.per_event)
+            except:
+                print('-------can not record the triple, drop out!!!!--------')
+
+
+
         time.sleep(0.01)
+        self.old_initiator=self.initiator
 
     def normalize_name(self,m):
         for p in self.ppp:
@@ -389,22 +461,23 @@ class update():
             for k, info in self.need_update.items():
                 '''设置时间函数的计算参数'''
                 if info[1] in location:
-                    self.sigma = 500
+                    self.sigma = 900
                     self.total_time_o = 30 * 60
                 elif info[1] in other_location:
-                    self.sigma = 1000
+                    self.sigma = 1800
                     self.total_time_o = 60 * 60
                 # 更新可能性
 
                 time_err = self.now_time - timetostamp(info[2])
-                if time_err < self.total_time_o:
-                    tmp_possibillity = cal_time(self.a_time, self.total_time_o, self.u, self.sigma,
-                                                time_err) * self.sigma
+                if time_err < self.total_time_o-1:
+                    # tmp_possibillity = cal_time(self.a_time, self.total_time_o, self.u, self.sigma,
+                    #                             time_err) * self.sigma
+                    tmp_possibillity=cal_time_zhishu(self.sigma,self.total_time_o,time_err)
                     self.graph_rel[info[0]]['rel_now'][2] = tmp_possibillity  # 更新可能性
                 # print(stamptotime(self.now_time),self.graph_rel[info[0]]['rel_now'])
                 # 小于阈值的时候，相当于不再存在
                 if time_err > self.total_time_o or (
-                        time_err > 100 and self.graph_rel[info[0]]['rel_now'][2] < 0.07):  # 这里加上time——err的
+                        time_err > 100 and self.graph_rel[info[0]]['rel_now'][2] < 0.03):  # 这里加上time——err的
                     self.graph_rel[info[0]]['rel_now'] = None
                     del m[k]
                     info_detail = '{} come back to office!!!'.format(info[0])
@@ -485,6 +558,10 @@ def init_graph(Person, Location):
         json.dump(graph, f, cls=MyEncoder, ensure_ascii=False)
     return graph
 
+
+def sample(triple):
+    person,location,time_begin=triple[0]
+    pass
 
 
 
