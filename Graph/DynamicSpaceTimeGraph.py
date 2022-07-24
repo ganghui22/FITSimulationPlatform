@@ -223,6 +223,7 @@ class update():
         self.tmp_graph = {}
         self.event = {}
         self.image=None
+        self.mohu=['一会儿','一会','过会']
 
     def receive_messege(self, triple, text):
         self.triple = triple
@@ -317,10 +318,7 @@ class update():
                         value[1] = self.graph_rel[value[1]]['rel_base'][1]
 
                     if value[2] != '':
-
-                            value[2] = self.get_time(value[2])
-
-
+                        value[2] = self.get_time(value[2])
                     if value[1]!='' and value[2]!='':
                         self.per_event.append([value[0], value[1], value[2]])
                     # print(self.per_event)
@@ -509,7 +507,8 @@ class update():
         if '分钟后' in detail:
             detail_time=detail.split('分',1)
             start_time=stamptotime(self.now_time+detail_time[0]*60)
-
+        elif detail == '现在':
+            start_time = stamptotime(self.now_time)
         else:
             for i in self.mohu:
                 if i in detail:

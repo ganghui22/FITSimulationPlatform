@@ -10,7 +10,7 @@ class deal():
         self.update_graph = graph.update()
         thread1 = threading.Thread(target=self.update_graph.update_auto)
 
-        thread2=threading.Thread(target=self.update_graph.simulate_time,args=(True,))#True denote using real time.
+        thread2=threading.Thread(target=self.update_graph.simulate_time,args=(False,))#True denote using real time.
         thread2.start()
         thread1.start()
 
@@ -44,17 +44,18 @@ def stamptotime(stamp):
 if __name__ == '__main__':
     import time
 
-    messege = ['刘华平:我们该赶进度了,大家12点到1号会议室碰一下',
-               '兰军:收到',
-               '卞港晖:老师，我参加不了，我8点15分要在Room511开个线上会议',
-               '刘老师:那我们就换到12点15分吧',
-               '晨峻:收到',
-               '港晖:收到',
-               '姚峰:收到',
-               '港晖:收到',
-               '小飞:收到',
-               '兴航:收到',
-               ]
+    # messege = ['刘华平:我们该赶进度了,大家12点到1号会议室碰一下',
+    #            '兰军:收到',
+    #            '卞港晖:老师，我参加不了，我8点15分要在Room511开个线上会议',
+    #            '刘老师:那我们就换到12点15分吧',
+    #            '晨峻:收到',
+    #            '港晖:收到',
+    #            '姚峰:收到',
+    #            '港晖:收到',
+    #            '小飞:收到',
+    #            '兴航:收到',
+    #            ]
+    messege=['兰军:老师您在哪呢？','刘老师:我现在在Room516','兰军：好的老师，一会儿我去找你。']
     # messege = ['刘老师:大家上午8点30分到1号会议室开会',
     #            '兰军:收到',
     #            '港晖:1号会议室有人，换个地方吧？',

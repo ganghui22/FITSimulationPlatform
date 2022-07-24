@@ -36,7 +36,7 @@ class DialoguePrediction:
         # 解析模型的载入
         self.device = torch.device('cpu')
         self.model: ObjectModel = torch.load(
-            '/home/llj/FITSimulationPlatform/NlpToolKit/Chinese/graph_model.bin', map_location='cpu')
+            '/home/llj/FITSimulationPlatform/NlpToolKit/Chinese/graph_model_720.bin', map_location='cpu')
         self.model.eval()
 
         # tokenizer的载入，从bert中载入
