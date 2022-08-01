@@ -1,4 +1,5 @@
 # -*-coding:utf-8-*-
+from concurrent.futures import thread
 import multiprocessing
 import random
 
@@ -17,9 +18,19 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 from PIL import Image
 import matplotlib
 import json
+import copy
+import threading
 
 location = ['room510', 'room511', 'room512', 'room513', 'room514', 'room515', 'room516']
 other_location = ['1号会议室', '2号会议室', '休息室', '茶水间', '1001教室', '1002教室', '1003教室', '讨论区', '其他']
+
+
+
+
+total_time_location=30*60
+total_time_other=60*60
+sigma_location=total_time_location/2
+sigma_other_location=total_time_other/2
 
 
 # def mark_location():
@@ -64,6 +75,14 @@ def cal_time(a, total_time, u, sigma, t_th):
     l = skewnorm.pdf(x, a, u, sigma)
     # print(l[t_th])
     return l[t_th]
+
+def cal_time_zheng(total_time,u,sigma,t_th):
+    x=np.arange(0,total_time,1)
+    pdf = np.exp(-((x - u) ** 2) / (2 * sigma ** 2)) / (sigma * np.sqrt(2 * np.pi))
+    pdf=(pdf-np.min(pdf))/(np.max(pdf)-np.min(pdf))
+    return pdf[t_th]
+    
+
 from scipy import stats
 def cal_time_zhishu(sigma,time_go,time):
     '''
@@ -82,7 +101,8 @@ def cal_time_zhishu(sigma,time_go,time):
         X.append(x)
         Y.append(p)
     Y=1-(Y - np.min(Y)) / (np.max(Y) - np.min(Y))  #
-    print(Y[time])
+    # print(Y[time])
+    return Y[time]
 
 
 
@@ -194,6 +214,17 @@ class Graph():
 
 class update():
     def __init__(self):
+        id = 0
+        self.location_total = location+other_location
+        self.location_id = {}
+        for i in self.location_total:
+            self.location_id[i] = id
+            id += 1
+
+        self.distribute = [0] * (id + 1)
+        print(self.distribute)
+        self.lock=threading.Lock()
+        # self.condition = threading.Condition()
         self.total_time_o = 0
         self.time = time.asctime(time.localtime(time.time()))
         self.messege = None
@@ -204,15 +235,23 @@ class update():
         #     self.graph_rel = json.load(load_f)
         self.teacher=['刘华平','刘老师']
         self.graph_rel = {}
+        self.need_update={}
         for p in self.ppp:
             self.graph_rel[p] = {}
             self.graph_rel[p]["rel_base"] = [self.ppp[p]["name"], self.ppp[p]["position"], 1]
-            self.graph_rel[p]["rel_now"] = None
+            self.graph_rel[p]["rel_now"] =self.distribute.copy()
+            print(self.graph_rel[p]["rel_base"][1].lower())
+            print(self.location_id[self.graph_rel[p]["rel_base"][1].lower()])
+            self.graph_rel[p]['rel_now'][self.location_id[self.graph_rel[p]["rel_base"][1].lower()]]=1
+            self.need_update[p]={}
+        print(self.need_update)
+        print(self.graph_rel)
 
+        
 
-        self.need_update = {}
         today_time = time.localtime(time.time())
         self.now_time = timetostamp(f"{today_time.tm_year}-{today_time.tm_mon}-{today_time.tm_mday} 08:00:00")
+        self.today = timetostamp(f"{today_time.tm_year}-{today_time.tm_mon}-{today_time.tm_mday} 00:00:00")
         '''设置时间函数的参数'''
         self.sigma = 100  # 影响最大的可能性---可能性可以乘上sigma
         self.u = 100  # 影响最左边的值
@@ -224,23 +263,26 @@ class update():
         self.event = {}
         self.image=None
         self.mohu=['一会儿','一会','过会']
+        self.vitual_envent={}
 
     def receive_messege(self, triple, text):
         self.triple = triple
         self.text = text
         self.tmp_dynamic_time_graph()
 
+
     def del_messege(self):
         self.messege = None
 
     def update_rel(self):
         '''-------------------------------根据json格式更改-接收消息时候的改变--------------------------------'''
-
+        # print('---------go in updat rel--------------')
         tmp_graph = self.tmp_graph.copy()
         for time_dy, messege in tmp_graph.items():
 
             if self.now_time >= timetostamp(time_dy):
-                time.sleep(0.0001)
+                # print('---------go in updat rel del!!!--------------')
+                # time.sleep(0.0001)
                 # print(stamptotime(self.now_time),time_dy)
                 for per_event in messege:
                     # print(per_event)
@@ -248,14 +290,19 @@ class update():
                         ch_person = p[0]
                         ch_location = p[1]
                         # location发生了变化
-                        if self.graph_rel[ch_person]['rel_base'][1] != ch_location:
-                            self.graph_rel[ch_person]['rel_now'] = [ch_person, ch_location, 1]
-                            self.need_update[ch_person] = [ch_person, ch_location, time_dy]
-                        else:
-                            self.graph_rel[ch_person]['rel_now'] = None
+                        # if self.graph_rel[ch_person]['rel_base'][1] != ch_location:
+                        self.graph_rel[ch_person]['rel_now'][self.location_id[ch_location.lower()]] = 1
+                        for i in enumerate(self.graph_rel[ch_person]['rel_now'][:self.location_id[ch_location]]):
+                            self.graph_rel[ch_person]['rel_now'][i[0]] = 0
+                        for j in enumerate(self.graph_rel[ch_person]['rel_now'][self.location_id[ch_location] + 1:]):
+                            self.graph_rel[ch_person]['rel_now'][self.location_id[ch_location] + 1+j[0]] = 0
+                        self.need_update[ch_person][time_dy]=[ch_person, ch_location, time_dy]
+                        # else:
+                        #     self.graph_rel[ch_person]['rel_now'] = None
+                        #     self.need_update[ch_person]=[ch_person, ch_location, time_dy]
                 del self.tmp_graph[time_dy]
             # time.sleep(5)
-        tmp = self.event.copy()
+        tmp =self.event.copy()
         tmp1 = self.event.copy()  # 防止在接受消息的时候被删掉
         for person_name, p in tmp.items():
             for num, person_event in enumerate(p):  # 取出事件
@@ -265,14 +312,44 @@ class update():
                     for per in person_event:
                         ch_person = per[0]
                         ch_location = per[1]
-                        if self.graph_rel[ch_person]['rel_base'][1] != ch_location:
-                            self.graph_rel[ch_person]['rel_now'] = [ch_person, ch_location, 1]
-                            self.need_update[ch_person] = [ch_person, ch_location, person_event[0][2]]
-                    del tmp1[person_name][num]
+                        # if self.graph_rel[ch_person]['rel_base'][1] != ch_location:
+
+                        for i in enumerate(self.graph_rel[ch_person]['rel_now'][:self.location_id[ch_location]]):
+                            self.graph_rel[ch_person]['rel_now'][i[0]] = 0
+                        for j in enumerate(self.graph_rel[ch_person]['rel_now'][self.location_id[ch_location] + 1:]):
+                            ind=self.location_id[ch_location]+1+j[0]
+                            self.graph_rel[ch_person]['rel_now'][ind] = 0
+                        self.graph_rel[ch_person]['rel_now'][self.location_id[ch_location]] = 1
+                        self.need_update[ch_person][person_event[0][2]] = [ch_person, ch_location, person_event[0][2]]
+                        # else:
+                        #     self.graph_rel[ch_person]['rel_now'] = None
+                        #     self.need_update[ch_person] = [ch_person, ch_location, person_event[0][2]]
                     self.event = tmp1
+        # '--------------模拟人离开的--------------------'
+        # print(self.need_update)
+        if self.need_update:
+            for k,i in self.need_update.items():#k表示人
+                for t,e in i.items():
+                    '''
+                    {港晖：{到到达地点的时间1：[地点，离开的时间]，到到达地点的时间2：[地点，离开的时间],,,,,}},{兰军：{时间1：【地点，离开时间】}}
+                    '''
+                    if k not in self.vitual_envent:
+                        self.vitual_envent[k] = {}
+                    # print('===============================================',i[2])
+                    # if i[2] not in self.vitual_envent[k]:
+                    #     self.vitual_envent[k][i[2]]=[]
+                    if t not in self.vitual_envent[k]:
+                        self.vitual_envent[k][t]=[e[1],stamptotime(timetostamp(t)+sample(e[1]))]
+                    else:
+                        if e[1]==self.vitual_envent[k][t][0]:#防止重新采样
+                            pass
+                        else:
+                            self.vitual_envent[k][t] = [e[1], stamptotime(timetostamp(t) + sample(e[1]))]
+
+
         # print('============rel====================\n',self.need_update)
     def tmp_dynamic_time_graph(self):  # single text
-        self.need_update = {}  # 指的是需要进一步继续时空概率推断的关系
+        # self.need_update = {}  # 指的是需要进一步继续时空概率推断的关系
         self.if_need_change = 0
         for i in ['那我们就换', '那我们换',
                   '那咱们就换', '那咱们换',
@@ -397,7 +474,7 @@ class update():
                     value[1]=self.old_initiator
                     if value[1] != '' and value[1] in self.person:  # 当地点是人的时候，对应这个人的办公室
                         if self.graph_rel[value[1]]['rel_now'] != None:
-                            value[1]=self.graph_rel[value[1]]['rel_now'][1]
+                            value[1]=self.graph_rel[value[1]]['rel_base'][1]
                         else:
                             value[1] = self.graph_rel[value[1]]['rel_base'][1]
                     if value[1] != '' and '的办公室' in value[1]:
@@ -424,8 +501,6 @@ class update():
             except:
                 print('-------can not record the triple, drop out!!!!--------')
 
-
-
         time.sleep(0.01)
         self.old_initiator=self.initiator
 
@@ -451,35 +526,43 @@ class update():
         # self.a = Graph()
         # img = cv2.imread('Graph/graph_update.png')
         while 1:
-            # self.now_time = timetostamp(time.strftime("%Y-%m-%d %H:%M:%S"))
+            self.lock.acquire()
+            # try:
             self.update_rel()
             '''按照时间函数更新'''
             # img = plt.imread('Graph/graph_update.png')
             m = self.need_update.copy()
             for k, info in self.need_update.items():
-                '''设置时间函数的计算参数'''
-                if info[1] in location:
-                    self.sigma = 900
-                    self.total_time_o = 30 * 60
-                elif info[1] in other_location:
-                    self.sigma = 1800
-                    self.total_time_o = 60 * 60
-                # 更新可能性
+                for t,e in info.items():
+                    '''设置时间函数的计算参数'''
+                    if e[1] in location:
+                        self.sigma = sigma_location
+                        self.total_time_o = total_time_location
+                    elif e[1] in other_location:
+                        self.sigma = sigma_other_location
+                        self.total_time_o = total_time_other
+                    # 更新可能性
 
-                time_err = self.now_time - timetostamp(info[2])
-                if time_err < self.total_time_o-1:
-                    # tmp_possibillity = cal_time(self.a_time, self.total_time_o, self.u, self.sigma,
-                    #                             time_err) * self.sigma
-                    tmp_possibillity=cal_time_zhishu(self.sigma,self.total_time_o,time_err)
-                    self.graph_rel[info[0]]['rel_now'][2] = tmp_possibillity  # 更新可能性
-                # print(stamptotime(self.now_time),self.graph_rel[info[0]]['rel_now'])
-                # 小于阈值的时候，相当于不再存在
-                if time_err > self.total_time_o or (
-                        time_err > 100 and self.graph_rel[info[0]]['rel_now'][2] < 0.03):  # 这里加上time——err的
-                    self.graph_rel[info[0]]['rel_now'] = None
-                    del m[k]
-                    info_detail = '{} come back to office!!!'.format(info[0])
+                    time_err = self.now_time - timetostamp(e[2])
+
+                    if 0<time_err < self.total_time_o-1:
+                        # tmp_possibillity = cal_time(self.a_time, self.total_time_o, self.u, self.sigma,
+                        #                             time_err) * self.sigma
+                        # tmp_possibillity=cal_time_zhishu(self.sigma,self.total_time_o,time_err)
+                        tmp_possibillity=cal_time_zheng(self.total_time_o,0,self.sigma,time_err)
+                        self.graph_rel[k]['rel_now'][self.location_id[e[1]]] = tmp_possibillity  # 更新可能性
+                        self.graph_rel[k]['rel_now'][self.location_id[self.graph_rel[k]['rel_base'][1].lower()]]=1-tmp_possibillity
+                    # print(stamptotime(self.now_time),self.graph_rel[info[0]]['rel_now'])
+
+                    # 小于阈值的时候，相当于不再存在
+                    if time_err > self.total_time_o:  # 这里加上time——err的
+                        self.graph_rel[k]['rel_now'][self.location_id[self.graph_rel[k]['rel_base'][1].lower()]]=1
+                        del m[k][t]
+                        info_detail = '{} come back to office!!!'.format(info[0])
             self.need_update = m
+            # except Exception as e:
+            #     print(str(e))
+            self.lock.release()
             # print(self.graph_rel['港晖'])
 
             # print(self.graph_rel)
@@ -491,17 +574,23 @@ class update():
             #
             # if cv2.waitKey(1) & 0xFF == ord('q'):
             #     break
-            # self.now_time += 60
+            # self.now_time += 60s
 
     def simulate_time(self,m):
         if m==True:
             while 1:
+                self.lock.acquire()
                 self.now_time=timetostamp(time.strftime("%Y-%m-%d %H:%M:%S"))
-                time.sleep(0.5)
+                self.lock.release()
+                # time.sleep(0.5)
         else:
             while 1:
-                time.sleep(1)
+                # time.sleep(1)
+                self.lock.acquire()
                 self.now_time+=60
+                self.lock.release()
+
+
 
     def get_time(self,detail):
         if '分钟后' in detail:
@@ -509,6 +598,67 @@ class update():
             start_time=stamptotime(self.now_time+detail_time[0]*60)
         elif detail == '现在':
             start_time = stamptotime(self.now_time)
+        elif ':' in detail:
+            evening=0
+            add_flag=0
+            if '明天' in detail:
+                detail = detail[2:]
+                add_flag = 1
+            if '下午' in detail:
+                evening = 1
+                detail = detail[2:]
+            if '上午' in detail:
+                detail = detail[2:]
+            if '晚上' in detail:
+                detail=detail[2:]
+                evening=1
+            split_time = detail.split(':', 1)
+            hours = int(split_time[0])
+
+            if evening == 1 and hours <= 12:
+                hours += 12
+            minutes = split_time[1]
+            if '0' in minutes:
+                if minutes[0]=='0':
+                    minutes=int(minutes[1])
+                else:
+                    minutes=int(minutes[0])*10+int(minutes[1])
+            else:
+                minutes=int(split_time[1])
+            stamp_time = add_flag * 24 * 60 * 60 + hours * 60 * 60 + minutes * 60
+            start_time_stamp = stamp_time + self.today
+            start_time = stamptotime(start_time_stamp)
+        elif '：' in detail:
+            evening=0
+            add_flag=0
+            if '明天' in detail:
+                detail = detail[2:]
+                add_flag = 1
+            if '下午' in detail:
+                evening = 1
+                detail = detail[2:]
+            if '上午' in detail:
+                detail = detail[2:]
+            if '晚上' in detail:
+                detail=detail[2:]
+                evening=1
+            split_time = detail.split(':', 1)
+            hours = int(split_time[0])
+
+            if evening == 1 and hours <= 12:
+                hours += 12
+            minutes = split_time[1]
+            if '0' in minutes:
+                if minutes[0]=='0':
+                    minutes=int(minutes[1])
+                else:
+                    minutes=int(minutes[0])*10+int(minutes[1])
+
+            else:
+                minutes=int(split_time[1])
+            stamp_time = add_flag * 24 * 60 * 60 + hours * 60 * 60 + minutes * 60
+            start_time_stamp = stamp_time + self.today
+            start_time = stamptotime(start_time_stamp)
         else:
             for i in self.mohu:
                 if i in detail:
@@ -529,6 +679,9 @@ class update():
                 detail = detail[2:]
             if '上午' in detail:
                 detail = detail[2:]
+            if '晚上' in detail:
+                detail=detail[2:]
+                evening=1
             split_time = detail.split('点', 1)
             hours = int(split_time[0])
             if evening == 1 and hours <= 12:
@@ -558,11 +711,20 @@ def init_graph(Person, Location):
     return graph
 
 
-def sample(triple):
-    person,location,time_begin=triple[0]
-    pass
-
-
+def sample(location):
+    per_location=location
+    if per_location in location:
+        sigma=sigma_location
+        total=total_time_location
+    else:
+        sigma=sigma_other_location
+        total=total_time_other
+    gfg=np.random.exponential(sigma,total)
+    m=total-gfg[random.randint(0,total-1)]
+    while m<0:
+        m=total-gfg[random.randint(0,total-1)]
+    # print(m)
+    return m
 
 
 if __name__ == '__main__':
