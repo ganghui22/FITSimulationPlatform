@@ -8,9 +8,8 @@ import numpy as np
 class deal():
     def __init__(self):
         self.triple = extract_triple.DialoguePrediction()
-        self.update_graph = graph.update()
+        self.update_graph = graph.update(12)
         thread1 = threading.Thread(target=self.update_graph.update_auto)
-
         thread2=threading.Thread(target=self.update_graph.simulate_time,args=(True,))#True denote using real time.
         thread2.start()
         thread1.start()
@@ -18,8 +17,11 @@ class deal():
     def dynamic_space_time_graph(self, text):
         triple = self.triple(text)
         print(triple)
-        self.update_graph.receive_messege(triple, text)
-        self.if_need_change = 0
+        if triple!=[]:
+            self.update_graph.receive_messege(triple, text)
+        else:
+            pass
+        # self.if_need_change = 0
 
     def person_get_location(self, person_name):
         if person_name in self.update_graph.graph_rel:
@@ -73,8 +75,8 @@ if __name__ == '__main__':
 
     '''
 
-    messege = ['兰军:大家下午6:18到讨论区讨论一下',
-                '卞港晖:我参加不了，我下午6:18要在516开个线上会议',
+    messege = ['兰军:大家下午5点10分到讨论区讨论一下',
+                '卞港晖:我参加不了，我下午5点10分要在516开个线上会议',
                 '兰军:行，其他人呢',
                 '小飞:收到',
                 '晨峻:我没问题',
@@ -112,10 +114,12 @@ if __name__ == '__main__':
     while 1:
         print(m.get_now_time())
         print(m.person_get_location('港晖'),'\n')
+        print(m.person_get_location('兰军'), '\n')
         print('need_update:',m.update_graph.need_update,'\n')
         print('tmp_graph:',m.update_graph.tmp_graph,'\n')
         print('event:',m.update_graph.event,'\n')
         print('vitual_event:',m.get_sample())
+        # print('table',m.update_graph.virtual_person_location_table)
         # print()
         time.sleep(5)
 # while 1:

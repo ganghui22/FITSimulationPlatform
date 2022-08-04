@@ -226,6 +226,7 @@ class update():
         for i in self.location_total:
             self.location_id[i] = self.id
             self.id += 1
+            print(self.id)
         self.stride=stride#采样步数
         self.distribute = [0] * (self.id + 1)
         # print(self.distribute)
@@ -367,6 +368,50 @@ class update():
 
 
         # print('============rel====================\n',self.need_update)
+
+    def nomalize_triple(self,value):
+        if value[1] == '你':  # 处理'找你'的情况
+            value[1] = self.old_initiator
+
+        value[0] = self.normalize_name(value[0])
+        value[1] = self.normalize_location(value[1])
+        if value[1] !=[] and value[1] not in self.location_total:
+            value[1]='其他'
+        if value[1] != '' and value[1] in self.person:  # 当地点是人的时候，对应这个人的办公室
+            if self.graph_rel[value[1]]['rel_now'] != None:
+                value[1] = self.graph_rel[value[1]]['rel_now'][1]
+            else:
+                value[1] = self.graph_rel[value[1]]['rel_base'][1]
+
+        if value[1] != '' and '的办公室' in value[1]:
+            value[1] = value[1].split('的办公室')[0]
+            value[1] = self.graph_rel[value[1]]['rel_base'][1]
+
+        # if value[2] != '':
+        #     value[2] = self.get_time(value[2])
+        if value[1] != '' and value[2] != '':
+            self.per_event.append([value[0], value[1], value[2]])
+            # print(self.per_event)
+            if value[0] in ['我们', '大家', '咱们', '全体员工', '所有人']:
+                self.total_person_flag = 1
+        return value
+    def normalize_location(self,l):
+        for j in location:
+            if l in j :
+                l=j
+                break
+        return l
+    def normalize_name(self, m):
+        for p in self.ppp:
+            if p in m:
+                m = p
+                break
+        for t in self.teacher:
+            if t == m:
+                m = '刘老师'
+                break
+        return m
+
     def tmp_dynamic_time_graph(self):  # single text
         # self.need_update = {}  # 指的是需要进一步继续时空概率推断的关系
         self.if_need_change = 0
@@ -399,38 +444,17 @@ class update():
                 total_person_flag = 0
 
                 for value in self.triple:
-                    if value[1] == '你':#处理'找你'的情况
-                        value[1]=self.old_initiator
-                    value[0]=self.normalize_name(value[0])
-                    value[1]=self.normalize_location(value[1])
-                    if value[1] != '' and value[1] in self.person:  # 当地点是人的时候，对应这个人的办公室
-                        if self.graph_rel[value[1]]['rel_now'] != None:
-                            value[1]=self.graph_rel[value[1]]['rel_now'][1]
-                        else:
-                            value[1] = self.graph_rel[value[1]]['rel_base'][1]
-
-                    if value[1] != '' and '的办公室' in value[1]:
-                        value[1] = value[1].split('的办公室')[0]
-                        value[1] = self.graph_rel[value[1]]['rel_base'][1]
-
-                    # if value[2] != '':
-                    #     value[2] = self.get_time(value[2])
-                    if value[1]!='' and value[2]!='':
-                        self.per_event.append([value[0], value[1], value[2]])
-                    # print(self.per_event)
-                        if value[0] in ['我们', '大家', '咱们', '全体员工', '所有人']:
-                            total_person_flag = 1
-
-                if total_person_flag == 1:  # 把我们更换成人名
-                    event_time = value[2]
-                    event_location = value[1]
-                    self.per_event = []
-                    for i in self.person:
-                        self.per_event.append([i, event_location, event_time])
+                    value=self.nomalize_triple(value)
+                    if self.total_person_flag == 1:  # 把我们更换成人名
+                        event_time = value[2]
+                        event_location = value[1]
+                        self.per_event = []
+                        for i in self.person:
+                            self.per_event.append([i, event_location, event_time])
                 if self.triple != [] and self.per_event!=[]:
                     self.event[self.initiator].append(self.per_event)
             except:
-                print('-------can not record the triple, drop out!!!!--------')
+                print('-------can not record the triple, drop out----1!!!!--------')
 
         # 由于是新的时间，所以把之前的存在的事件就默认已经确定不变，放在self.tmp_graph中，
 
@@ -438,19 +462,7 @@ class update():
         elif self.if_need_change == 1:  # 那就xxx
             try:
                 for value in self.triple:
-                    value[0]=self.normalize_name[value[0]]
-                    value[1]=self.normalize_location(value[1])
-
-                    self.per_event = []
-                    if value[1] != '' and value[1] in self.person:  # 当地点是人的时候，对应这个人的办公室
-                        value[1] = self.graph_rel[value[1]]['rel_base'][1]
-
-                    if value[1] != '' and '的办公室' in value[1]:
-                        value[1] = value[1].split('的办公室')[0]
-                        value[1] = self.graph_rel[value[1]]['rel_base'][1]
-
-                    # if value[2]!='':
-                    #     value[2] = self.get_time(value[2])
+                    value=self.nomalize_triple(value)
 
                     # 时间地点都有
                     if value[2] != '' and value[1] != '':
@@ -476,7 +488,7 @@ class update():
                 self.tmp_graph[time_signal].append(self.event[self.initiator][0])
                 del self.event[self.initiator][0]
             except:
-                print('---------------can not change the time or location!!!!!---------------------')
+                print('---------------can not change the time or location----2!!!!!---------------------')
         elif self.if_need_change==2:
             try:
                 if self.event[self.initiator] != []:
@@ -518,100 +530,86 @@ class update():
                 if self.triple != [] and self.per_event!=[]:
                     self.event[self.initiator].append(self.per_event)
             except:
-                print('-------can not record the triple, drop out!!!!--------')
+                print('-------can not record the triple, drop out----3!!!!--------')
 
         time.sleep(0.01)
         self.old_initiator=self.initiator
 
-    def normalize_name(self,m):
-        for p in self.ppp:
-            if p in m:
-                m=p
-                break
-        for t in self.teacher:
-            if t==m:
-                m='刘老师'
-                break
-        return m
-    def normalize_location(self,l):
-        for j in location:
-            if l in j :
-                l=j
-                break
-        return l
+
+
     # print('====event=========',self.event)
 
     def update_auto(self):  # 自动的改变
         # self.a = Graph()
         # img = cv2.imread('Graph/graph_update.png')
-        while 1:
-            self.lock.acquire()
-            try:
-                self.update_rel()
-                '''按照时间函数更新'''
-                # img = plt.imread('Graph/graph_update.png')
-                # m = self.need_update.copy()
-                # mm=self.need_update.copy()
-                # m = self.need_update
-                # mm = m
-                # print(stamptotime(self.now_time))
-                # print('for 之前',self.need_update)
-                need_delete_list = []
-                for k, info in self.need_update.items():
-                    for t, e in info.items():
-                        # print('for 之后', self.need_update)
-                        if len(e[2])==1:
-                            '''设置时间函数的计算参数'''
-                            if e[1] in location:
-                                self.sigma = sigma_location
-                                self.total_time_o = total_time_location
-                            elif e[1] in other_location:
-                                self.sigma = sigma_other_location
-                                self.total_time_o = total_time_other
-                            # 更新可能性
+        # while 1:
+        # self.lock.acquire()
+        try:
+            self.update_rel()
+            '''按照时间函数更新'''
+            # img = plt.imread('Graph/graph_update.png')
+            # m = self.need_update.copy()
+            # mm=self.need_update.copy()
+            # m = self.need_update
+            # mm = m
+            # print(stamptotime(self.now_time))
+            # print('for 之前',self.need_update)
+            need_delete_list = []
+            for k, info in self.need_update.items():
+                for t, e in info.items():
+                    # print('for 之后', self.need_update)
+                    if len(e[2])==1:
+                        '''设置时间函数的计算参数'''
+                        if e[1] in location:
+                            self.sigma = sigma_location
+                            self.total_time_o = total_time_location
+                        elif e[1] in other_location:
+                            self.sigma = sigma_other_location
+                            self.total_time_o = total_time_other
+                        # 更新可能性
 
-                            time_err = self.now_time - timetostamp(e[2][0])
+                        time_err = self.now_time - timetostamp(e[2][0])
 
-                            if 0 < time_err < self.total_time_o - 1:
-                                # tmp_possibillity = cal_time(self.a_time, self.total_time_o, self.u, self.sigma,
-                                #                             time_err) * self.sigma
-                                # tmp_possibillity=cal_time_zhishu(self.sigma,self.total_time_o,time_err)
-                                tmp_possibillity = cal_time_zheng(self.total_time_o, 0, self.sigma, time_err)
-                                self.graph_rel[k]['rel_now'][self.location_id[e[1]]] = tmp_possibillity  # 更新可能性
-                                self.graph_rel[k]['rel_now'][
-                                    self.location_id[self.graph_rel[k]['rel_base'][1].lower()]] = 1 - tmp_possibillity
-                            # print(stamptotime(self.now_time),self.graph_rel[info[0]]['rel_now'])
+                        if 0 < time_err < self.total_time_o - 1:
+                            # tmp_possibillity = cal_time(self.a_time, self.total_time_o, self.u, self.sigma,
+                            #                             time_err) * self.sigma
+                            # tmp_possibillity=cal_time_zhishu(self.sigma,self.total_time_o,time_err)
+                            tmp_possibillity = cal_time_zheng(self.total_time_o, 0, self.sigma, time_err)
+                            self.graph_rel[k]['rel_now'][self.location_id[e[1]]] = tmp_possibillity  # 更新可能性
+                            self.graph_rel[k]['rel_now'][
+                                self.location_id[self.graph_rel[k]['rel_base'][1].lower()]] = 1 - tmp_possibillity
+                        # print(stamptotime(self.now_time),self.graph_rel[info[0]]['rel_now'])
 
-                            # 小于阈值的时候，相当于不再存在
-                            if time_err > self.total_time_o:  # 这里加上time——err的
+                        # 小于阈值的时候，相当于不再存在
+                        if time_err > self.total_time_o:  # 这里加上time——err的
 
-                                self.graph_rel[k]['rel_now'][self.location_id[self.graph_rel[k]['rel_base'][1].lower()]] = 1
-                                self.graph_rel[k]['rel_now'][self.location_id[e[1]]] = 0
-                                # del m[k][t]
-                                need_delete_list.append((k, t))
+                            self.graph_rel[k]['rel_now'][self.location_id[self.graph_rel[k]['rel_base'][1].lower()]] = 1
+                            self.graph_rel[k]['rel_now'][self.location_id[e[1]]] = 0
+                            # del m[k][t]
+                            need_delete_list.append((k, t))
 
-                                # info_detail = '{} come back to office!!!'.format(info[0])
+                            # info_detail = '{} come back to office!!!'.format(info[0])
 
-                        else:
-                            if timetostamp(e[2][0])<self.now_time<timetostamp(e[2][1]):
-                                self.graph_rel[k]['rel_now'][self.location_id[e[1]]] =1
-                                for i in enumerate(self.graph_rel[k]['rel_now'][:self.location_id[e[1]]]):
-                                    self.graph_rel[k]['rel_now'][i[0]] = 0
-                                for j in enumerate(
-                                        self.graph_rel[k]['rel_now'][self.location_id[e[1]] + 1:]):
-                                    self.graph_rel[k]['rel_now'][self.location_id[e[1]] + 1 + j[0]] = 0
-                            elif self.now_time>timetostamp(e[2][1]):
-                                self.graph_rel[k]['rel_now'][self.location_id[self.graph_rel[k]['rel_base'][1].lower()]] = 1
-                                self.graph_rel[k]['rel_now'][self.location_id[e[1]]] = 0
-                                # del m[k][t]
-                                need_delete_list.append((k,t))
+                    else:
+                        if timetostamp(e[2][0])<self.now_time<timetostamp(e[2][1]):
+                            self.graph_rel[k]['rel_now'][self.location_id[e[1]]] =1
+                            for i in enumerate(self.graph_rel[k]['rel_now'][:self.location_id[e[1]]]):
+                                self.graph_rel[k]['rel_now'][i[0]] = 0
+                            for j in enumerate(
+                                    self.graph_rel[k]['rel_now'][self.location_id[e[1]] + 1:]):
+                                self.graph_rel[k]['rel_now'][self.location_id[e[1]] + 1 + j[0]] = 0
+                        elif self.now_time>timetostamp(e[2][1]):
+                            self.graph_rel[k]['rel_now'][self.location_id[self.graph_rel[k]['rel_base'][1].lower()]] = 1
+                            self.graph_rel[k]['rel_now'][self.location_id[e[1]]] = 0
+                            # del m[k][t]
+                            need_delete_list.append((k,t))
 
-                for a, b in need_delete_list:
-                    del self.need_update[a][b]
-            # self.need_update = m
-            except Exception as e:
-                print(str(e))
-            self.lock.release()
+            for a, b in need_delete_list:
+                del self.need_update[a][b]
+        # self.need_update = m
+        except Exception as e:
+            print(str(e))
+        # self.lock.release()
             # print(self.graph_rel['港晖'])
 
             # print(self.graph_rel)
@@ -625,38 +623,40 @@ class update():
             #     break
             # self.now_time += 60s
 
-    def simulate_time(self,m,begin=0,end=0):
-        if m==True:
-            while 1:
-                self.lock.acquire()
-                self.now_time=timetostamp(time.strftime("%Y-%m-%d %H:%M:%S"))
-                self.lock.release()
-                # time.sleep(0.5)F
-        else:
-            s_begin = self.now_time + begin * 60*60
-            s_end = self.now_time + (12 + end) * 60*60
-            diff_time = (s_end-s_begin)//self.stride
-            # print(diff_time)
-            nums=0#第num次采样
-            time_copy = s_begin
-            total_days=2
-            while total_days>=0:
-                # time.sleep(1)
-                self.lock.acquire()
-                self.now_time+=diff_time
-                for pp,table in self.virtual_person_location_table.items():
-                    for cloumn in range(self.id+1):#地点
-                        # print(cloumn,nums)
-                        self.virtual_person_location_table[pp][cloumn][nums]=self.graph_rel[pp]['rel_now'][cloumn]
-                nums+=1
-                if nums==self.stride:
-                    time_copy+=24*60*60
-                    self.now_time=time_copy
-                    nums=0
-                print('-----------------------------------',self.virtual_person_location_table)
-                total_days-=1
-                time.sleep(5)
-                self.lock.release()
+    def simulate_time(self,begin=0,end=0):
+        s_begin = self.now_time + begin * 60*60
+        s_end = self.now_time + (12 + end) * 60*60
+        diff_time = (s_end-s_begin)//self.stride
+        # print(diff_time)
+        nums=0#第num次采样
+        time_copy = s_begin
+        total_days=1
+        result={}
+        while total_days>0:
+            # time.sleep(1)
+            # self.lock.acquire()
+            result=[]
+            self.now_time+=diff_time
+            print(stamptotime(self.now_time))
+            self.update_auto()
+            print(self.graph_rel['港晖'])
+            for pp,table in self.virtual_person_location_table.items():
+                for cloumn in range(self.id+1):#地点
+                    # print(cloumn,nums)
+                    self.virtual_person_location_table[pp][cloumn][nums]=self.graph_rel[pp]['rel_now'][cloumn]
+            result.append(self.virtual_person_location_table)
+            nums+=1
+            if nums==self.stride:
+                time_copy+=24*60*60
+                self.now_time=time_copy
+                nums=0
+                total_days -= 1
+            print('-----------------------------------',self.virtual_person_location_table)
+            with open('./experiment_result.json', 'w',encoding='utf-8') as f:
+                f.write(json.dumps(result,ensure_ascii=False))
+        print('---------------finnish----------------')
+            # time.sleep(2)
+            # self.lock.release()
 
 
     def object_time2real_time(self,tiem_object: str, qurey_time: float) -> list:
