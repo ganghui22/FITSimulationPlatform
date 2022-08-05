@@ -23,7 +23,7 @@ import threading
 import time
 import jionlp as jio
 import calendar
-
+from Graph.expreiment import ground_truth2sample_table,get_acc_one_sample
 location = ['room510', 'room511', 'room512', 'room513', 'room514', 'room515', 'room516']
 other_location = ['1号会议室', '2号会议室', '休息室', '茶水间', '1001教室', '1002教室', '1003教室', '讨论区', '其他']
 with open('/home/llj/FITSimulationPlatform/data/Location_list.json') as f:
@@ -253,11 +253,6 @@ class update():
             self.graph_rel[p]['rel_now'][self.location_id[self.graph_rel[p]["rel_base"][1].lower()]]=1
             self.need_update[p]={}
             self.virtual_person_location_table[p] = [[0]*self.stride for i in range(self.id+1)]
-        # print(self.need_update)
-        # print(self.graph_rel)
-        # print(self.virtual_person_location_table)
-
-        
 
         self.today_time = time.localtime(time.time())
         self.now_time = timetostamp(f"{self.today_time.tm_year}-{self.today_time.tm_mon}-{self.today_time.tm_mday} 08:00:00")
@@ -277,14 +272,16 @@ class update():
         self.vitual_envent={}
 
 
-    def receive_messege(self, triple, text):
+    def receive_messege(self, triple, text,label):
         # print(triple)
         # triple[2]=self.object_time2real_time(triple[2],time.time())
         self.triple = triple
         for k,lll in enumerate(self.triple):
-            self.triple[k][2]=self.object_time2real_time(lll[2],time.time())
+            if lll[2]!='':
+                self.triple[k][2]=self.object_time2real_time(lll[2],time.time())
         self.text = text
         self.tmp_dynamic_time_graph()
+        self.label=label
 
 
     def del_messege(self):
@@ -441,7 +438,7 @@ class update():
                         self.tmp_graph[time_signal] = []
                     self.tmp_graph[time_signal].append(self.event[self.initiator][0])
                     del self.event[self.initiator][0]
-                total_person_flag = 0
+                self.total_person_flag = 0
 
                 for value in self.triple:
                     value=self.nomalize_triple(value)
@@ -623,7 +620,7 @@ class update():
             #     break
             # self.now_time += 60s
 
-    def simulate_time(self,begin=0,end=0):
+    def simulate_time(self,begin=0,end=0,stride=12):
         s_begin = self.now_time + begin * 60*60
         s_end = self.now_time + (12 + end) * 60*60
         diff_time = (s_end-s_begin)//self.stride
@@ -632,14 +629,15 @@ class update():
         time_copy = s_begin
         total_days=1
         result={}
+        truth=ground_truth2sample_table(self.label, self.now_time,self.ppp,localtion_dict=location_dict,start_time=begin,sample_step=stride)
         while total_days>0:
             # time.sleep(1)
             # self.lock.acquire()
             result=[]
             self.now_time+=diff_time
-            print(stamptotime(self.now_time))
+            # print(stamptotime(self.now_time))
             self.update_auto()
-            print(self.graph_rel['港晖'])
+            # print(self.graph_rel['港晖'])
             for pp,table in self.virtual_person_location_table.items():
                 for cloumn in range(self.id+1):#地点
                     # print(cloumn,nums)
@@ -651,12 +649,13 @@ class update():
                 self.now_time=time_copy
                 nums=0
                 total_days -= 1
-            print('-----------------------------------',self.virtual_person_location_table)
-            with open('./experiment_result.json', 'w',encoding='utf-8') as f:
-                f.write(json.dumps(result,ensure_ascii=False))
-        print('---------------finnish----------------')
+            # print('-----------------------------------',self.virtual_person_location_table)
+            # with open('./experiment_result.json', 'w',encoding='utf-8') as f:
+            #     f.write(json.dumps(result,ensure_ascii=False))
+
             # time.sleep(2)
             # self.lock.release()
+        return self.virtual_person_location_table,truth
 
 
     def object_time2real_time(self,tiem_object: str, qurey_time: float) -> list:
