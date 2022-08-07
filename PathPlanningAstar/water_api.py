@@ -403,7 +403,7 @@ def huatu(curr, origin_x, origin_y, height, width, resolution):
 
 
 if __name__ == "__main__":
-    map_dealing('fit4_5.png')
+    map_dealing('../data/map/fit4_5/fit4_5.png')
     # map_track_middle('map.png')
     # main()
     # api = WaterApi("192.168.10.10", 31001)

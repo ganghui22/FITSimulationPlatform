@@ -33,7 +33,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                  dialogue_list: list = None,
                  parent=None):
         super(MainWindow, self).__init__(parent)
-
         self.setupUi(self)
 
         # 加载当前屏幕的分辨率
@@ -42,8 +41,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
                                qApp.desktop().screenGeometry(current_screenNumber).height()
 
         # 加载地图
-        self._map = QPixmap("PathPlanningAstar/map.png")
-        self._map_cv2 = cv2.imread("PathPlanningAstar/map.png")
+        self._map = QPixmap("data/map/fit4_5/fit4_5.png")
+        self._map_cv2 = cv2.imread("PathPlanningAstar/fit4_5.png")
         self._map_w, self._map_h = self._map.width(), self._map.height()
 
         # 加载机器人头像
@@ -108,7 +107,7 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # 用户选择框大小及位置设置
         self.UserComboBox.move(self.listWidget.x(), self.listWidget.y() + self.listWidget.height() + 10)
         self.UserComboBox.setFixedWidth(int(self.listWidget.width() / 4) - 10)  # 聊天框的五分之一减去10
-        self.UserComboBox.setFixedHeight(self.centralwidget.height() - self.listWidget.height() - \
+        self.UserComboBox.setFixedHeight(self.centralwidget.height() - self.listWidget.height() -\
                                          self.UserComboBox.width() - 10 - 10 - 10)
         # 用户头像框大小及位置设置
         self.userhead.setGeometry(self.UserComboBox.x(),
@@ -239,6 +238,9 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         # save TagLocation槽函数连接
         self.actionsave_Tag_Location = self.save_map_scene_room_item_dict
 
+        # open map事件
+        self.action_open_map = self._action_open_map
+
     def keyPressEvent(self, a0: QKeyEvent) -> None:
         """
         重写按键Press事件
@@ -268,8 +270,8 @@ class MainWindow(QMainWindow, Ui_MainWindow):
             d[name]['argument'] = {}
             d[name]['argument']['color'] =self.map_scene_room_item_dict[name]["argument"]["color"]
             self.map_scene_room_item_dict[name]["argument"]["label_pos"] = \
-                [int(self.map_scene_room_item_dict['name_label'].x()),
-                 int(self.map_scene_room_item_dict['name_label'].y())]
+                [int(self.map_scene_room_item_dict[name]['name_label'].x()),
+                 int(self.map_scene_room_item_dict[name]['name_label'].y())]
             room_name_label_pos = self.map_scene_room_item_dict[name]["argument"]["label_pos"]
             d[name][name]["argument"]["label_pos"] = room_name_label_pos
             d[name]['argument']['name'] = self.map_scene_room_item_dict[name]['argument']["name"]
@@ -345,7 +347,6 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         重写 map_view_real的鼠标释放事件。
         释放时若是DragRec模式读取 RubberBandDrag所选中区域进行区域内房间选择，该功能待优化，效果不是太好。
         """
-        print(self.actionTag_location.isChecked())
         if self.dragRectPressFlag & self.actionTag_location.isChecked():
             # 获取roi 区域
             r = self.map_view_real.mapToScene(self.map_view_real.rubberBandRect())  # [0左上角，1右上角，2右下角，3左下角]
